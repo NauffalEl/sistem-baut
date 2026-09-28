@@ -1,0 +1,21 @@
+export { prisma } from "./client";
+export type {
+  User,
+  Role,
+  Category,
+  Product,
+  ProductAlias,
+  Inventory,
+  StockMovement,
+  Supplier,
+  Purchase,
+  PurchaseItem,
+  Sale,
+  SaleItem,
+  PriceHistory,
+  Receipt,
+  OCRResult,
+  AIAgentSettings,
+  AIExecutionLog,
+  AuditLog,
+} from "@prisma/client";

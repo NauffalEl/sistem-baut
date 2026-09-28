@@ -1,0 +1,348 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Authentication & Authorization
+// ─────────────────────────────────────────────────────────────
+
+model Role {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Product & Category
+// ─────────────────────────────────────────────────────────────
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  name            String
+  sku             String   @unique
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+  type            String?
+  size            String?
+  material        String?
+  unit            String   @default("pcs")
+  lastBuyPrice    Float    @default(0)
+  sellingPrice    Float    @default(0)
+  minStock        Int      @default(0)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  aliases          ProductAlias[]
+  inventory        Inventory?
+  stockMovements   StockMovement[]
+  purchaseItems    PurchaseItem[]
+  saleItems        SaleItem[]
+  priceHistories   PriceHistory[]
+  ocrResults       OCRResult[]
+
+  @@map("products")
+}
+
+model ProductAlias {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  alias     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_aliases")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Inventory & Stock
+// ─────────────────────────────────────────────────────────────
+
+model Inventory {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("inventory")
+}
+
+model StockMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  quantity      Int
+  source        String   // "purchase", "sale", "adjustment", "return", "correction"
+  sourceId      String? // reference to purchase, sale, etc
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([productId])
+  @@index([sourceId])
+  @@map("stock_movements")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Purchase
+// ─────────────────────────────────────────────────────────────
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchases Purchase[]
+
+  @@map("suppliers")
+}
+
+model Purchase {
+  id            String   @id @default(cuid())
+  purchaseNo    String   @unique
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  total         Float    @default(0)
+  status        String   @default("draft") // "draft", "confirmed", "cancelled"
+  receiptId     String?
+  receipt       Receipt? @relation(fields: [receiptId], references: [id])
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items PurchaseItem[]
+
+  @@index([supplierId])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  price      Float
+  subtotal   Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([purchaseId])
+  @@index([productId])
+  @@map("purchase_items")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sales
+// ─────────────────────────────────────────────────────────────
+
+model Sale {
+  id        String   @id @default(cuid())
+  saleNo    String   @unique
+  total     Float    @default(0)
+  status    String   @default("draft") // "draft", "confirmed", "cancelled"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String   @id @default(cuid())
+  saleId    String
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  subtotal  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Price History
+// ─────────────────────────────────────────────────────────────
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  price      Float
+  type       String   // "purchase", "selling"
+  source     String?  // reference to transaction
+  effectDate DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([productId])
+  @@map("price_histories")
+}
+
+// ─────────────────────────────────────────────────────────────
+// OCR
+// ─────────────────────────────────────────────────────────────
+
+model Receipt {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  status    String   @default("pending") // "pending", "processing", "completed", "failed", "confirmed"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ocrResults OCRResult[]
+  purchases  Purchase[]
+
+  @@map("receipts")
+}
+
+model OCRResult {
+  id        String   @id @default(cuid())
+  receiptId String
+  receipt   Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  rawText   String
+  quantity  Int?
+  price     Float?
+  confidence Float   @default(0)
+  reviewed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([receiptId])
+  @@map("ocr_results")
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI Agent
+// ─────────────────────────────────────────────────────────────
+
+model AIAgentSettings {
+  id                  String   @id @default(cuid())
+  enabled             Boolean  @default(true)
+  scheduledEnabled    Boolean  @default(true)
+  frequency           String   @default("weekly") // "daily", "weekly", "monthly"
+  dayOfWeek           Int      @default(0) // 0 = Sunday
+  timeOfDay           String   @default("09:00") // HH:mm format
+  lastRun             DateTime?
+  nextRun             DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  executionLogs AIExecutionLog[]
+
+  @@map("ai_agent_settings")
+}
+
+model AIExecutionLog {
+  id                  String   @id @default(cuid())
+  settingsId          String
+  settings            AIAgentSettings @relation(fields: [settingsId], references: [id])
+  status              String   // "pending", "running", "completed", "failed"
+  startedAt           DateTime @default(now())
+  completedAt         DateTime?
+  error               String?
+  tokensUsed          Int      @default(0)
+  costUSD             Float    @default(0)
+  result              String? // JSON
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reports AIReport[]
+
+  @@index([settingsId])
+  @@map("ai_execution_logs")
+}
+
+model AIReport {
+  id           String   @id @default(cuid())
+  executionId  String
+  execution    AIExecutionLog @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  title        String
+  content      String   // JSON or markdown
+  type         String   // "weekly", "inventory", "sales", "purchase", "price", "custom"
+  status       String   @default("generated") // "generated", "reviewed", "archived"
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([executionId])
+  @@index([type])
+  @@map("ai_reports")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Audit
+// ─────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // "create", "update", "delete", etc
+  entity    String   // "product", "purchase", "sale", etc
+  entityId  String
+  oldValue  String?  // JSON
+  newValue  String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityId])
+  @@map("audit_logs")
+}

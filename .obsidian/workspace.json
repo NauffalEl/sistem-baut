@@ -1,0 +1,12 @@
+{
+  "lastOpenFiles": ["docs/00-Index.md", "PRD.md", "ARCHITECTURE.md", "TASKS.md"],
+  "main": {
+    "id": "sistem-baut-vault",
+    "type": "split",
+    "children": [
+      { "id": "workspace", "type": "leaf", "state": { "type": "markdown", "state": { "file": "docs/00-Index.md" } } },
+      { "id": "outline", "type": "leaf", "state": { "type": "outliner", "state": { "element": "plugin", "data": {} } } }
+    ],
+    "direction": "vertical"
+  }
+}
