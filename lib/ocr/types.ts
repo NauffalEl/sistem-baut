@@ -17,7 +17,8 @@ export interface OCRResult {
 
 export interface OCRProvider {
   name: string;
-  extractText(imagePath: string): Promise<string>;
+  /** Accepts file path, URL, or base64 data. Provider determines how to interpret it. */
+  extractText(imageSource: string): Promise<string>;
 }
 
 export interface OCRParser {

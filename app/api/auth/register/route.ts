@@ -17,10 +17,18 @@ export async function POST(req: NextRequest) {
 
     const { email, password, name } = parsed.data;
 
+    // Blokir register dengan email admin yang reserved
+    if (email === "admin@gmail.com") {
+      return NextResponse.json(
+        { error: "Email ini reserved untuk admin. Gunakan email lain." },
+        { status: 403 }
+      );
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json(
-        { error: "Email already registered" },
+        { error: "Email sudah terdaftar" },
         { status: 409 }
       );
     }

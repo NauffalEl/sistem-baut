@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ReceiptParser } from '@/lib/ocr/parser';
 import { ProductMatcher } from '@/lib/ocr/matcher';
+import { getOCRProvider } from '@/lib/ocr/provider';
 
 describe('ReceiptParser', () => {
   const parser = new ReceiptParser();
@@ -81,5 +82,113 @@ describe('OCR error handling', () => {
     const parser = new ReceiptParser();
     const items = parser.parseItems('Some header\nNo items here\nFooter');
     expect(items).toHaveLength(0);
+  });
+});
+
+describe('OCR Provider Factory', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('returns mock provider when OCR_PROVIDER is empty', () => {
+    process.env.OCR_PROVIDER = '';
+    const provider = getOCRProvider();
+    expect(provider.name).toBe('mock');
+  });
+
+  it('returns mock provider when OCR_PROVIDER is mock', () => {
+    process.env.OCR_PROVIDER = 'mock';
+    const provider = getOCRProvider();
+    expect(provider.name).toBe('mock');
+  });
+
+  it('returns ocr.space provider when OCR_PROVIDER is ocr.space', () => {
+    process.env.OCR_PROVIDER = 'ocr.space';
+    const provider = getOCRProvider();
+    expect(provider.name).toBe('ocr.space');
+  });
+
+  it('returns mock provider for unknown provider', () => {
+    process.env.OCR_PROVIDER = 'unknown';
+    const provider = getOCRProvider();
+    expect(provider.name).toBe('mock');
+  });
+});
+
+describe('OCRSpaceProvider', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it('throws error when OCR_API_KEY is not set', async () => {
+    process.env.OCR_PROVIDER = 'ocr.space';
+    process.env.OCR_API_KEY = '';
+    const { OCRSpaceProvider } = await import('@/lib/ocr/providers/ocrspace');
+    const provider = new OCRSpaceProvider();
+    await expect(provider.extractText('base64data')).rejects.toThrow('OCR_API_KEY is not set');
+  });
+
+  it('sends base64 image to OCR.space API', async () => {
+    process.env.OCR_PROVIDER = 'ocr.space';
+    process.env.OCR_API_KEY = 'test-key';
+    process.env.OCR_BASE_URL = 'https://api.ocr.space/parse/image';
+
+    const mockResponse = {
+      ParsedResults: [{ ParsedText: 'TOKO BAUT\nBaut M8 10 500 5000' }],
+      IsErroredOnProcessing: false,
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const { OCRSpaceProvider } = await import('@/lib/ocr/providers/ocrspace');
+    const provider = new OCRSpaceProvider();
+    const result = await provider.extractText('iVBORw0KGgo=');
+
+    expect(result).toContain('TOKO BAUT');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://api.ocr.space/parse/image',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('handles OCR.space API error', async () => {
+    process.env.OCR_PROVIDER = 'ocr.space';
+    process.env.OCR_API_KEY = 'test-key';
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        IsErroredOnProcessing: true,
+        ErrorMessage: ['Invalid API key'],
+      }),
+    });
+
+    const { OCRSpaceProvider } = await import('@/lib/ocr/providers/ocrspace');
+    const provider = new OCRSpaceProvider();
+    await expect(provider.extractText('base64data')).rejects.toThrow('Invalid API key');
+  });
+
+  it('handles empty OCR results', async () => {
+    process.env.OCR_PROVIDER = 'ocr.space';
+    process.env.OCR_API_KEY = 'test-key';
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ParsedResults: [],
+        IsErroredOnProcessing: false,
+      }),
+    });
+
+    const { OCRSpaceProvider } = await import('@/lib/ocr/providers/ocrspace');
+    const provider = new OCRSpaceProvider();
+    await expect(provider.extractText('base64data')).rejects.toThrow('no results');
   });
 });

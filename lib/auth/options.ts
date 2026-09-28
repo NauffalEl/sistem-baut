@@ -25,6 +25,17 @@ export const authOptions: NextAuthConfig = {
 
         const { email, password } = parsed.data;
 
+        // Hardcoded admin login
+        if (email === "admin@gmail.com" && password === "admin") {
+          return {
+            id: "admin-hardcoded",
+            email: "admin@gmail.com",
+            name: "Admin",
+            role: "ADMIN",
+          };
+        }
+
+        // Regular user login from DB
         const user = await prisma.user.findUnique({
           where: { email },
           include: { role: true },

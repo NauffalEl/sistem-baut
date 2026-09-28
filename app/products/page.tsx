@@ -82,78 +82,85 @@ export default function ProductsPage() {
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Products</h1>
-        <Link href="/products/new" className="btn-primary" style={{ textDecoration: "none", display: "inline-block" }}>
-          + New Product
-        </Link>
+      <div className="page-head">
+        <div>
+          <h1>Produk</h1>
+          <p className="page-sub">Kelola daftar produk, SKU, dan harga jual</p>
+        </div>
+        <Link href="/products/new" className="btn-primary">+ Produk Baru</Link>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="message error">{error}</p>}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      <div className="filters">
         <input
+          className="grow"
           type="text"
-          placeholder="Search name or SKU..."
+          placeholder="Cari nama atau SKU…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 200 }}
         />
         <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-          <option value="">All Categories</option>
+          <option value="">Semua Kategori</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
         <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)}>
-          <option value="">All Status</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="">Semua Status</option>
+          <option value="true">Aktif</option>
+          <option value="false">Nonaktif</option>
         </select>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <p className="muted">Memuat data…</p>
       ) : products.length === 0 ? (
-        <p>No products found.</p>
+        <div className="card empty-state">Belum ada produk. Mulai dengan menambah produk baru.</div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>SKU</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id}>
-                <td>{p.name}</td>
-                <td>{p.sku}</td>
-                <td>{p.category?.name || "-"}</td>
-                <td>{p.sellingPrice}</td>
-                <td>{p.inventory?.quantity ?? 0}</td>
-                <td>{p.active ? "Active" : "Inactive"}</td>
-                <td>
-                  <Link href={`/products/${p.id}`}>View</Link>
-                  {" | "}
-                  <Link href={`/products/${p.id}/edit`}>Edit</Link>
-                  {" | "}
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    style={{ color: "red", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                  >
-                    Delete
-                  </button>
-                </td>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>SKU</th>
+                <th>Kategori</th>
+                <th>Harga</th>
+                <th>Stok</th>
+                <th>Status</th>
+                <th>Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id}>
+                  <td style={{ fontWeight: 600, color: "var(--ink)" }}>{p.name}</td>
+                  <td className="num">{p.sku}</td>
+                  <td className="muted">{p.category?.name || "—"}</td>
+                  <td className="num">{p.sellingPrice.toLocaleString("id-ID")}</td>
+                  <td className="num">{p.inventory?.quantity ?? 0}</td>
+                  <td>
+                    <span className={`badge ${p.active ? "badge-success" : "badge-muted"}`}>
+                      {p.active ? "Aktif" : "Nonaktif"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="row-actions">
+                      <Link href={`/products/${p.id}`} className="action-link">Lihat</Link>
+                      <Link href={`/products/${p.id}/edit`} className="action-link">Edit</Link>
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="action-link delete"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

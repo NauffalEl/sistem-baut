@@ -22,20 +22,48 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await requireRole("ADMIN");
-    const { fileName, fileUrl } = await req.json();
 
-    if (!fileName || !fileUrl) {
+    // Accept multipart/form-data with file
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const existingReceiptId = formData.get("receiptId") as string | null;
+
+    if (!file && !existingReceiptId) {
       return NextResponse.json(
-        { error: "fileName and fileUrl required" },
+        { error: "file or receiptId required" },
         { status: 400 }
       );
     }
 
-    // Save receipt metadata
-    const receipt = await uploadReceipt(fileName, fileUrl);
+    // If uploading new file, convert to base64
+    let base64Data: string | null = null;
+    if (file) {
+      const buffer = await file.arrayBuffer();
+      base64Data = Buffer.from(buffer).toString("base64");
+    }
 
-    // Process OCR
-    const result = await processReceipt(fileUrl);
+    // Create or use existing receipt
+    let receipt;
+    if (existingReceiptId) {
+      const { getReceipt } = await import("@/lib/ocr/service");
+      receipt = await getReceipt(existingReceiptId);
+      if (!receipt) {
+        return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
+      }
+    } else {
+      const fileName = file?.name || `receipt-${Date.now()}.png`;
+      receipt = await uploadReceipt(fileName, "");
+      if (!base64Data) {
+        return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      }
+    }
+
+    // Process OCR with base64 data
+    if (!base64Data) {
+      return NextResponse.json({ error: "No image data provided" }, { status: 400 });
+    }
+
+    const result = await processReceipt(base64Data);
 
     // Save OCR result
     const { saveOCRResult } = await import("@/lib/ocr/service");
@@ -61,8 +89,24 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    // Update receipt status to failed if there's an error
+    try {
+      const { prisma } = await import("@/lib/db");
+      const { getReceipt } = await import("@/lib/ocr/service");
+      const formData = await req.formData();
+      const receiptId = formData.get("receiptId") as string | null;
+      if (receiptId) {
+        const receipt = await getReceipt(receiptId);
+        if (receipt) {
+          await prisma.receipt.update({
+            where: { id: receiptId },
+            data: { status: "failed" },
+          });
+        }
+      }
+    } catch {}
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }

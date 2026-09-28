@@ -138,65 +138,46 @@ export default function AIAgentPage() {
     }
   }
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
+  if (loading) return <div className="container"><p className="muted">Memuat data…</p></div>;
   if (error) return <div className="container"><p className="error">{error}</p></div>;
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>AI Agent</h1>
-        <Link href="/dashboard" className="btn-secondary" style={{ textDecoration: "none" }}>
-          Back
-        </Link>
+      <div className="page-head">
+        <div>
+          <h1>AI Advisor</h1>
+          <p className="page-sub">Konfigurasi agen AI, jadwal mingguan, dan riwayat laporan</p>
+        </div>
+        <Link href="/dashboard" className="btn-secondary">Kembali</Link>
       </div>
 
       {/* Settings */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3>Settings</h3>
+        <h3>Pengaturan AI</h3>
         {!settings ? (
-          <p>No settings configured.</p>
+          <p className="muted">Belum ada pengaturan.</p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginTop: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 16 }}>
             <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-                AI Agent
-              </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 12.5, color: "var(--muted)" }}>Status AI Agent</label>
               <button
                 onClick={() => toggleSetting("enabled")}
-                style={{
-                  background: settings.enabled ? "#16a34a" : "#ef4444",
-                  color: "#fff",
-                  border: "none",
-                  padding: "8px 16px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                }}
+                className={`action-btn ${settings.enabled ? "enabled" : "disabled"}`}
               >
                 {settings.enabled ? "ON" : "OFF"}
               </button>
             </div>
             <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-                Scheduled Run
-              </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 12.5, color: "var(--muted)" }}>Jadwal Otomatis</label>
               <button
                 onClick={() => toggleSetting("scheduledEnabled")}
-                style={{
-                  background: settings.scheduledEnabled ? "#3b82f6" : "#9ca3af",
-                  color: "#fff",
-                  border: "none",
-                  padding: "8px 16px",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                }}
+                className={`action-btn ${settings.scheduledEnabled ? "enabled" : "disabled"}`}
               >
                 {settings.scheduledEnabled ? "ON" : "OFF"}
               </button>
             </div>
             <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-                Frequency
-              </label>
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 12.5, color: "var(--muted)" }}>Frekuensi</label>
               <select
                 value={settings.frequency}
                 onChange={(e) => {
@@ -206,31 +187,23 @@ export default function AIAgentPage() {
                     body: JSON.stringify({ id: settings.id, frequency: e.target.value }),
                   }).then((r) => r.json().then((d) => setSettings(d.settings)));
                 }}
-                style={{ padding: "8px", borderRadius: 4, border: "1px solid #ccc" }}
+                className="action-select"
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="daily">Harian</option>
+                <option value="weekly">Mingguan</option>
+                <option value="monthly">Bulanan</option>
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-                Last Run
-              </label>
-              <p style={{ margin: 0 }}>
-                {settings.lastRun
-                  ? new Date(settings.lastRun).toLocaleString()
-                  : "Never"}
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 12.5, color: "var(--muted)" }}>Terakhir Dijalankan</label>
+              <p style={{ margin: 0, fontSize: 13.5 }}>
+                {settings.lastRun ? new Date(settings.lastRun).toLocaleString("id-ID") : "Belum pernah"}
               </p>
             </div>
             <div>
-              <label style={{ display: "block", fontWeight: 600, marginBottom: 4 }}>
-                Next Run
-              </label>
-              <p style={{ margin: 0 }}>
-                {settings.nextRun
-                  ? new Date(settings.nextRun).toLocaleString()
-                  : "Not scheduled"}
+              <label style={{ display: "block", fontWeight: 600, marginBottom: 6, fontSize: 12.5, color: "var(--muted)" }}>Jadwal Berikutnya</label>
+              <p style={{ margin: 0, fontSize: 13.5 }}>
+                {settings.nextRun ? new Date(settings.nextRun).toLocaleString("id-ID") : "Tidak dijadwalkan"}
               </p>
             </div>
           </div>
@@ -239,7 +212,7 @@ export default function AIAgentPage() {
 
       {/* Run Analysis */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3>Manual Run</h3>
+        <h3>Jalankan Analisis Manual</h3>
         <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
           {ANALYSIS_TYPES.map((t) => (
             <button
@@ -248,7 +221,7 @@ export default function AIAgentPage() {
               disabled={running !== null || !settings?.enabled}
               className="btn-primary"
             >
-              {running === t.value ? "Running..." : t.label}
+              {running === t.value ? "Menjalankan..." : t.label}
             </button>
           ))}
         </div>
@@ -256,12 +229,12 @@ export default function AIAgentPage() {
 
       {/* Result */}
       {result && (
-        <div className="card" style={{ marginBottom: 20, borderLeft: "4px solid #3b82f6" }}>
+        <div className="card" style={{ marginBottom: 20, borderLeft: "4px solid var(--accent)" }}>
           <h3>{result.title}</h3>
           <p>{result.content}</p>
           {result.recommendations && result.recommendations.length > 0 && (
             <div>
-              <strong>Recommendations:</strong>
+              <strong>Rekomendasi:</strong>
               <ul>
                 {result.recommendations.map((r: string, i: number) => (
                   <li key={i}>{r}</li>
@@ -274,84 +247,92 @@ export default function AIAgentPage() {
 
       {/* Reports */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3>Recent Reports ({reports.length})</h3>
+        <h3>Laporan Terbaru ({reports.length})</h3>
         {reports.length === 0 ? (
-          <p>No reports yet.</p>
+          <p className="empty-state">Belum ada laporan</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.title}</td>
-                  <td>{r.type}</td>
-                  <td>{r.status}</td>
-                  <td>{new Date(r.createdAt).toLocaleString()}</td>
-                  <td>
-                    {r.status === "generated" && (
-                      <>
-                        <button
-                          onClick={() => reviewReport(r.id, "reviewed")}
-                          style={{ marginRight: 8 }}
-                        >
-                          Review
-                        </button>
-                        <button
-                          onClick={() => reviewReport(r.id, "archived")}
-                          style={{ color: "#666" }}
-                        >
-                          Archive
-                        </button>
-                      </>
-                    )}
-                  </td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Judul</th>
+                  <th>Tipe</th>
+                  <th>Status</th>
+                  <th>Tanggal</th>
+                  <th>Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {reports.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ fontWeight: 600, color: "var(--ink)" }}>{r.title}</td>
+                    <td className="muted">{r.type}</td>
+                    <td>
+                      <span className={`badge ${r.status === "reviewed" ? "badge-success" : r.status === "archived" ? "badge-muted" : "badge-warning"}`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="muted">{new Date(r.createdAt).toLocaleString("id-ID")}</td>
+                    <td>
+                      {r.status === "generated" && (
+                        <div className="row-actions">
+                          <button
+                            onClick={() => reviewReport(r.id, "reviewed")}
+                            className="action-link"
+                          >
+                            Review
+                          </button>
+                          <button
+                            onClick={() => reviewReport(r.id, "archived")}
+                            className="action-link delete"
+                          >
+                            Arsip
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Logs */}
       <div className="card">
-        <h3>Execution Logs ({logs.length})</h3>
+        <h3>Riwayat Eksekusi ({logs.length})</h3>
         {logs.length === 0 ? (
-          <p>No logs yet.</p>
+          <p className="empty-state">Belum ada riwayat</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Started</th>
-                <th>Completed</th>
-                <th>Tokens</th>
-                <th>Cost</th>
-                <th>Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((l) => (
-                <tr key={l.id}>
-                  <td style={{ color: l.status === "completed" ? "#16a34a" : l.status === "failed" ? "#ef4444" : "#f59e0b" }}>
-                    {l.status}
-                  </td>
-                  <td>{new Date(l.startedAt).toLocaleString()}</td>
-                  <td>{l.completedAt ? new Date(l.completedAt).toLocaleString() : "-"}</td>
-                  <td>{l.tokensUsed}</td>
-                  <td>${l.costUSD.toFixed(3)}</td>
-                  <td style={{ color: "#ef4444" }}>{l.error || "-"}</td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Dimulai</th>
+                  <th>Selesai</th>
+                  <th>Token</th>
+                  <th>Biaya</th>
+                  <th>Error</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {logs.map((l) => (
+                  <tr key={l.id}>
+                    <td style={{ color: l.status === "completed" ? "var(--success)" : l.status === "failed" ? "var(--danger)" : "var(--warning)", fontWeight: 600 }}>
+                      {l.status}
+                    </td>
+                    <td>{new Date(l.startedAt).toLocaleString("id-ID")}</td>
+                    <td>{l.completedAt ? new Date(l.completedAt).toLocaleString("id-ID") : "-"}</td>
+                    <td className="num">{l.tokensUsed}</td>
+                    <td className="num">${l.costUSD.toFixed(3)}</td>
+                    <td style={{ color: "var(--danger)" }}>{l.error || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

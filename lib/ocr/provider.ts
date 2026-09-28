@@ -1,4 +1,5 @@
 import { OCRProvider } from "./types";
+import { OCRSpaceProvider } from "./providers/ocrspace";
 
 /**
  * Mock OCR provider for development.
@@ -36,6 +37,8 @@ export function getOCRProvider(): OCRProvider {
   const provider = process.env.OCR_PROVIDER || "mock";
 
   switch (provider) {
+    case "ocr.space":
+      return new OCRSpaceProvider();
     case "mock":
     default:
       return new MockOCRProvider();

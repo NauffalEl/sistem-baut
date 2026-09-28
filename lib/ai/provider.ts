@@ -1,4 +1,5 @@
 import { AIProvider, AIAnalysisResult } from "./types";
+import { OpenAICompatibleProvider } from "./providers/openai-compatible";
 
 /**
  * Mock AI provider for development.
@@ -219,7 +220,9 @@ export function getAIProvider(): AIProvider {
 
   switch (provider) {
     case "mock":
-    default:
       return new MockAIProvider();
+    default:
+      // Any non-mock value uses OpenAI-compatible provider (Agnes, OpenAI, Groq, etc.)
+      return new OpenAICompatibleProvider(provider);
   }
 }

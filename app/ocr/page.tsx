@@ -52,13 +52,16 @@ export default function OCRPage() {
     setUploading(true);
     setError("");
     try {
-      // In real app, upload to storage first. Here we mock it.
-      const mockUrl = `/uploads/${file.name}`;
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append("file", file);
+
       const res = await fetch("/api/ocr", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, fileUrl: mockUrl }),
+        body: formData,
+        // Don't set Content-Type header — browser sets it with boundary
       });
+
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Gagal upload");
@@ -137,7 +140,8 @@ export default function OCRPage() {
           {uploading ? "Uploading..." : "Upload Receipt"}
           <input
             type="file"
-            accept="image/*,.pdf"
+            accept="image/*"
+            capture="environment"
             onChange={handleUpload}
             style={{ display: "none" }}
             disabled={uploading}
