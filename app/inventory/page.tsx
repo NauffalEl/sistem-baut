@@ -24,13 +24,25 @@ type Detected = {
   inventory: { quantity: number } | null;
 };
 
+type Status = "out" | "low" | "ok";
+
+const STATUS_LABEL: Record<Status, string> = {
+  out: "Stok Habis",
+  low: "Stok Menipis",
+  ok: "Aman",
+};
+
 export default function InventoryPage() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [lowStock, setLowStock] = useState<Detected[]>([]);
   const [outOfStock, setOutOfStock] = useState<Detected[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [adjustProduct, setAdjustProduct] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  // Inline adjustment state — one row is edited at a time.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustDir, setAdjustDir] = useState<"in" | "out">("in");
   const [adjustNote, setAdjustNote] = useState("");
@@ -53,7 +65,7 @@ export default function InventoryPage() {
         }),
       ]);
 
-      if (!stockRes.ok) throw new Error("Gagal load inventory");
+      if (!stockRes.ok) throw new Error("Gagal memuat data inventori");
       const stockData = await stockRes.json();
       setStocks(stockData.stocks || []);
 
@@ -66,7 +78,7 @@ export default function InventoryPage() {
         setOutOfStock(outData.products || []);
       }
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -76,30 +88,59 @@ export default function InventoryPage() {
     fetchAll();
   }, [fetchAll]);
 
-  async function handleAdjust(productId: string) {
-    const res = await fetch(`/api/inventory/${productId}/adjust`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productId,
-        quantity: Number(adjustQty) || 0,
-        direction: adjustDir,
-        source: "adjustment",
-        note: adjustNote,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || "Gagal adjustment");
-      return;
-    }
-    setAdjustProduct(null);
+  function startEdit(item: StockItem) {
+    setEditingId(item.productId);
     setAdjustQty("");
+    setAdjustDir("in");
     setAdjustNote("");
-    fetchAll();
+    setError("");
+    setMessage("");
   }
 
-  function stockStatus(item: StockItem): "out" | "low" | "ok" {
+  function cancelEdit() {
+    setEditingId(null);
+    setAdjustQty("");
+    setAdjustNote("");
+  }
+
+  async function handleAdjust(productId: string) {
+    const qty = Number(adjustQty);
+    if (!Number.isInteger(qty) || qty < 1) {
+      setError("Jumlah harus berupa angka bulat lebih dari 0");
+      return;
+    }
+
+    setSavingId(productId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`/api/inventory/${productId}/adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          quantity: qty,
+          direction: adjustDir,
+          source: "adjustment",
+          note: adjustNote.trim() || "Penyesuaian stok",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Gagal menyimpan penyesuaian stok");
+        return;
+      }
+      setMessage("Stok berhasil disesuaikan");
+      cancelEdit();
+      await fetchAll();
+    } catch {
+      setError("Koneksi bermasalah. Coba lagi.");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  function stockStatus(item: StockItem): Status {
     if (item.quantity <= 0) return "out";
     if (item.quantity <= item.product.minStock) return "low";
     return "ok";
@@ -107,110 +148,154 @@ export default function InventoryPage() {
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Inventory</h1>
+      <div className="page-head">
+        <div>
+          <h1>Inventori</h1>
+          <p className="page-sub">Pantau stok dan sesuaikan jumlah barang</p>
+        </div>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="message error">{error}</p>}
+      {message && <p className="message success">{message}</p>}
 
-      {/* Low / Out of stock alerts */}
+      {/* Peringatan stok menipis / habis */}
       {(lowStock.length > 0 || outOfStock.length > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-          <div className="card" style={{ borderLeft: "4px solid #f59e0b" }}>
-            <h3 style={{ color: "#f59e0b" }}>Low Stock ({lowStock.length})</h3>
-            <ul>
-              {lowStock.map((p) => (
-                <li key={p.id}>
-                  {p.name} ({p.sku}) — {p.inventory?.quantity ?? 0} tersisa
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="card" style={{ borderLeft: "4px solid #ef4444" }}>
-            <h3 style={{ color: "#ef4444" }}>Out of Stock ({outOfStock.length})</h3>
-            <ul>
-              {outOfStock.map((p) => (
-                <li key={p.id}>
-                  {p.name} ({p.sku})
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="chart-grid" style={{ marginBottom: 20 }}>
+          {lowStock.length > 0 && (
+            <div className="card" style={{ borderLeft: "4px solid var(--warning)" }}>
+              <h3 className="tone-warning">Stok Menipis ({lowStock.length})</h3>
+              <ul>
+                {lowStock.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/inventory/${p.id}`}>
+                      {p.name} ({p.sku})
+                    </Link>{" "}
+                    — sisa {p.inventory?.quantity ?? 0}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {outOfStock.length > 0 && (
+            <div className="card" style={{ borderLeft: "4px solid var(--danger)" }}>
+              <h3 className="tone-danger">Stok Habis ({outOfStock.length})</h3>
+              <ul>
+                {outOfStock.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/inventory/${p.id}`}>
+                      {p.name} ({p.sku})
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Stock table */}
+      {/* Tabel stok */}
       {loading ? (
-        <p>Loading...</p>
+        <p className="muted">Memuat data…</p>
       ) : stocks.length === 0 ? (
-        <p>No inventory records yet.</p>
+        <div className="card empty-state">
+          Belum ada data inventori. Stok akan muncul setelah pembelian dikonfirmasi.
+        </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>SKU</th>
-              <th>Qty</th>
-              <th>Min</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stocks.map((item) => {
-              const status = stockStatus(item);
-              const color =
-                status === "out" ? "#ef4444" : status === "low" ? "#f59e0b" : "#16a34a";
-              return (
-                <tr key={item.productId}>
-                  <td>
-                    <Link href={`/products/${item.productId}`}>{item.product.name}</Link>
-                  </td>
-                  <td>{item.product.sku}</td>
-                  <td>{item.quantity}</td>
-                  <td>{item.product.minStock}</td>
-                  <td>
-                    <span style={{ color, fontWeight: 600 }}>
-                      {status === "out" ? "Out of stock" : status === "low" ? "Low stock" : "OK"}
-                    </span>
-                  </td>
-                  <td>
-                    {adjustProduct === item.productId ? (
-                      <div style={{ display: "flex", gap: 4 }}>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>SKU</th>
+                <th className="num-col">Jumlah</th>
+                <th className="num-col">Stok Min</th>
+                <th>Status</th>
+                <th>Riwayat</th>
+                <th className="action-col">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stocks.map((item) => {
+                const status = stockStatus(item);
+                const isEditing = editingId === item.productId;
+                return (
+                  <tr key={item.productId} style={isEditing ? { background: "var(--accent-soft)" } : undefined}>
+                    <td style={{ fontWeight: 600, color: "var(--ink)" }}>{item.product.name}</td>
+                    <td className="num">{item.product.sku}</td>
+                    <td className="num-col">
+                      {isEditing ? (
                         <input
                           type="number"
                           min="1"
+                          step="1"
+                          inputMode="numeric"
                           value={adjustQty}
                           onChange={(e) => setAdjustQty(e.target.value)}
-                          style={{ width: 60 }}
+                          placeholder="Jumlah"
+                          aria-label={`Jumlah penyesuaian untuk ${item.product.name}`}
+                          autoFocus
+                          className="qty-input"
                         />
-                        <select
-                          value={adjustDir}
-                          onChange={(e) => setAdjustDir(e.target.value as "in" | "out")}
-                        >
-                          <option value="in">+</option>
-                          <option value="out">−</option>
-                        </select>
-                        <input
-                          placeholder="Note"
-                          value={adjustNote}
-                          onChange={(e) => setAdjustNote(e.target.value)}
-                          style={{ width: 80 }}
-                        />
-                        <button onClick={() => handleAdjust(item.productId)} className="btn-primary">
-                          Save
-                        </button>
-                        <button onClick={() => setAdjustProduct(null)}>Cancel</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setAdjustProduct(item.productId)}>Adjust</button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      ) : (
+                        <span style={{ fontWeight: 600 }}>{item.quantity}</span>
+                      )}
+                    </td>
+                    <td className="num-col">{item.product.minStock}</td>
+                    <td>
+                      <span className={`badge ${status === "out" ? "badge-danger" : status === "low" ? "badge-warning" : "badge-success"}`}>
+                        {STATUS_LABEL[status]}
+                      </span>
+                    </td>
+                    <td>
+                      <Link href={`/inventory/${item.productId}`} className="action-link">
+                        Riwayat
+                      </Link>
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <div className="row-actions" style={{ justifyContent: "flex-end" }}>
+                          <select
+                            value={adjustDir}
+                            onChange={(e) => setAdjustDir(e.target.value as "in" | "out")}
+                            aria-label="Arah penyesuaian"
+                            style={{ width: 82 }}
+                          >
+                            <option value="in">+ Tambah</option>
+                            <option value="out">− Kurang</option>
+                          </select>
+                          <input
+                            type="text"
+                            value={adjustNote}
+                            onChange={(e) => setAdjustNote(e.target.value)}
+                            placeholder="Alasan"
+                            aria-label="Alasan penyesuaian"
+                            style={{ width: 120 }}
+                          />
+                          <button
+                            onClick={() => handleAdjust(item.productId)}
+                            className="action-link edit"
+                            disabled={savingId === item.productId}
+                          >
+                            {savingId === item.productId ? "Menyimpan…" : "Simpan"}
+                          </button>
+                          <button onClick={cancelEdit} className="action-link">
+                            Batal
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="row-actions" style={{ justifyContent: "flex-end" }}>
+                          <button onClick={() => startEdit(item)} className="action-link edit">
+                            Sesuaikan Qty
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

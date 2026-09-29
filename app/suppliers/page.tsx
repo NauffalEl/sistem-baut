@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { TrashIcon } from "@/components/icons/TrashIcon";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { useConfirmDialog } from "@/app/components/useConfirmDialog";
 
 type Supplier = {
   id: string;
@@ -10,27 +13,27 @@ type Supplier = {
   address: string | null;
 };
 
+const emptyForm = { name: "", contact: "", address: "" };
+
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
-  const [address, setAddress] = useState("");
+  const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const { dialogProps, ask } = useConfirmDialog();
 
   const fetchSuppliers = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await fetch("/api/suppliers", { cache: "no-store" });
-      if (!res.ok) throw new Error("Gagal load suppliers");
+      if (!res.ok) throw new Error("Gagal memuat supplier");
       const data = await res.json();
       setSuppliers(data.suppliers || []);
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -40,173 +43,177 @@ export default function SuppliersPage() {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
-  async function addSupplier(e: React.FormEvent) {
+  function resetForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+  }
+
+  function startEdit(s: Supplier) {
+    setEditingId(s.id);
+    setForm({ name: s.name, contact: s.contact || "", address: s.address || "" });
+    setMessage("");
+    setError("");
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!form.name.trim()) return;
     setSaving(true);
     setError("");
     setMessage("");
     try {
       const res = await fetch("/api/suppliers", {
-        method: "POST",
+        method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), contact, address }),
+        body: JSON.stringify(editingId ? { id: editingId, ...form, name: form.name.trim() } : { ...form, name: form.name.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Gagal tambah supplier");
+        setError(data.error || (editingId ? "Gagal update supplier" : "Gagal tambah supplier"));
         return;
       }
-      setMessage("Supplier ditambahkan");
-      setName("");
-      setContact("");
-      setAddress("");
-      fetchSuppliers();
+      setMessage(editingId ? "Supplier diperbarui" : "Supplier ditambahkan");
+      resetForm();
+      await fetchSuppliers();
     } catch {
-      setError("Network error");
+      setError("Koneksi bermasalah. Coba lagi.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function updateSupplier(id: string) {
-    if (!name.trim()) return;
-    setSaving(true);
-    setError("");
-    setMessage("");
-    try {
-      const res = await fetch("/api/suppliers", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: name.trim(), contact, address }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Gagal update supplier");
-        return;
-      }
-      setMessage("Supplier diupdate");
-      setEditingId(null);
-      setName("");
-      setContact("");
-      setAddress("");
-      fetchSuppliers();
-    } catch {
-      setError("Network error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function removeSupplier(id: string) {
-    if (!confirm("Hapus supplier ini?")) return;
-    setError("");
-    try {
-      const res = await fetch("/api/suppliers", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Gagal hapus supplier");
-        return;
-      }
-      fetchSuppliers();
-    } catch {
-      setError("Network error");
-    }
+  function removeSupplier(s: Supplier) {
+    ask(
+      `Hapus supplier ${s.name}?`,
+      async () => {
+        try {
+          const res = await fetch("/api/suppliers", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: s.id }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            setError(data.error || "Gagal hapus supplier");
+            return;
+          }
+          setMessage("Supplier dihapus");
+          if (editingId === s.id) resetForm();
+          await fetchSuppliers();
+        } catch {
+          setError("Koneksi bermasalah. Coba lagi.");
+        }
+      },
+      { description: "Data supplier akan dihapus permanen.", confirmLabel: "Ya, Hapus" }
+    );
   }
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Suppliers</h1>
-        <Link href="/purchases" className="btn-secondary" style={{ textDecoration: "none" }}>
-          Back to Purchases
+      <div className="page-head">
+        <div>
+          <h1>Supplier</h1>
+          <p className="page-sub">Kelola daftar pemasok barang</p>
+        </div>
+        <Link href="/purchases" className="btn-secondary">
+          Ke Pembelian
         </Link>
       </div>
 
-      {error && <p className="error">{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+      {error && <p className="message error">{error}</p>}
+      {message && <p className="message success">{message}</p>}
 
       <div className="card">
-        <h3>{editingId ? "Edit Supplier" : "Add Supplier"}</h3>
-        <form onSubmit={editingId ? (e) => { e.preventDefault(); updateSupplier(editingId); } : addSupplier}>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
-              style={{ flex: 1, minWidth: 150 }}
-              required
-            />
-            <input
-              type="text"
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder="Contact"
-              style={{ flex: 1, minWidth: 120 }}
-            />
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Address"
-              style={{ flex: 1, minWidth: 150 }}
-            />
+        <h3>{editingId ? "Edit Supplier" : "Tambah Supplier"}</h3>
+        <form onSubmit={submit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Nama</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="PT Sumber Baut"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Kontak</label>
+              <input
+                type="text"
+                value={form.contact}
+                onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
+                placeholder="0812… atau email"
+              />
+            </div>
+            <div className="form-group form-group-wide">
+              <label>Alamat</label>
+              <input
+                type="text"
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                placeholder="Jl. Industri No. 1"
+              />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? "Saving..." : editingId ? "Update" : "Add"}
+              {saving ? "Menyimpan…" : editingId ? "Simpan Perubahan" : "Tambah Supplier"}
             </button>
             {editingId && (
-              <button type="button" onClick={() => { setEditingId(null); setName(""); setContact(""); setAddress(""); }}>
-                Cancel
+              <button type="button" onClick={resetForm} className="btn-ghost">
+                Batal
               </button>
             )}
           </div>
         </form>
       </div>
 
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>All Suppliers</h3>
+      <div className="card">
+        <h3>Daftar Supplier ({suppliers.length})</h3>
         {loading ? (
-          <p>Loading...</p>
+          <p className="muted">Memuat data…</p>
         ) : suppliers.length === 0 ? (
-          <p>No suppliers yet.</p>
+          <p className="empty-state">Belum ada supplier. Tambahkan di atas.</p>
         ) : (
-          <table style={{ marginTop: 12 }}>
-            <tbody>
-              {suppliers.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.name}</td>
-                  <td>{s.contact || "-"}</td>
-                  <td>{s.address || "-"}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button
-                      onClick={() => {
-                        setEditingId(s.id);
-                        setName(s.name);
-                        setContact(s.contact || "");
-                        setAddress(s.address || "");
-                      }}
-                      style={{ marginRight: 8 }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => removeSupplier(s.id)}
-                      style={{ color: "red", background: "none", border: "none", cursor: "pointer" }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Kontak</th>
+                  <th>Alamat</th>
+                  <th className="action-col">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {suppliers.map((s) => (
+                  <tr key={s.id} style={editingId === s.id ? { background: "var(--accent-soft)" } : undefined}>
+                    <td style={{ fontWeight: 600, color: "var(--ink)" }}>{s.name}</td>
+                    <td className="muted">{s.contact || "—"}</td>
+                    <td className="muted">{s.address || "—"}</td>
+                    <td>
+                      <div className="row-actions" style={{ justifyContent: "flex-end" }}>
+                        <button onClick={() => startEdit(s)} className="action-link edit">Edit</button>
+                        <button
+                          onClick={() => removeSupplier(s)}
+                          className="action-link delete"
+                          aria-label={`Hapus ${s.name}`}
+                          title="Hapus"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

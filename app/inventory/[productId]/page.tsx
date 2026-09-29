@@ -19,6 +19,16 @@ type Stock = {
   product: { name: string; sku: string; minStock: number };
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  purchase: "Pembelian",
+  sale: "Penjualan",
+  adjustment: "Penyesuaian",
+  return: "Retur",
+  correction: "Koreksi",
+};
+
+const sourceLabel = (s: string) => SOURCE_LABEL[s] ?? s;
+
 export default function StockHistoryPage({
   params,
 }: {
@@ -38,16 +48,16 @@ export default function StockHistoryPage({
         fetch(`/api/inventory/${productId}`, { cache: "no-store" }),
         fetch(`/api/inventory/${productId}?page=1&limit=50`, { cache: "no-store" }),
       ]);
-      if (stockRes.ok) {
-        const d = await stockRes.json();
-        setStock(d.stock);
-      }
-      if (histRes.ok) {
-        const d = await histRes.json();
-        setMovements(d.items || []);
-      }
+      if (!stockRes.ok) throw new Error("Gagal memuat data stok");
+      if (!histRes.ok) throw new Error("Gagal memuat riwayat stok");
+
+      const stockData = await stockRes.json();
+      setStock(stockData.stock);
+
+      const histData = await histRes.json();
+      setMovements(histData.items || []);
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -57,46 +67,63 @@ export default function StockHistoryPage({
     fetchData();
   }, [fetchData]);
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
-  if (error) return <div className="container"><p className="error">{error}</p></div>;
+  if (loading) return <div className="container"><p className="muted">Memuat data…</p></div>;
+  if (error) return <div className="container"><p className="message error">{error}</p></div>;
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div className="page-head">
         <div>
-          <h1>Stock History</h1>
-          {stock && <p style={{ margin: 0, color: "#666" }}>{stock.product.name} ({stock.product.sku}) — Current: {stock.quantity}</p>}
+          <h1>Riwayat Stok</h1>
+          {stock && (
+            <p className="page-sub">
+              {stock.product.name} ({stock.product.sku}) — stok saat ini: {stock.quantity}
+            </p>
+          )}
         </div>
-        <Link href="/inventory" className="btn-secondary" style={{ textDecoration: "none" }}>
-          Back to Inventory
+        <Link href="/inventory" className="btn-secondary">
+          ← Kembali ke Inventori
         </Link>
       </div>
 
       {movements.length === 0 ? (
-        <p>No movements yet.</p>
+        <div className="card empty-state">Belum ada riwayat pergerakan stok untuk produk ini.</div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Source</th>
-              <th>Qty</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movements.map((m) => (
-              <tr key={m.id}>
-                <td>{new Date(m.createdAt).toLocaleString()}</td>
-                <td>{m.source}</td>
-                <td style={{ color: m.quantity > 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
-                  {m.quantity > 0 ? "+" : ""}{m.quantity}
-                </td>
-                <td>{m.note || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="card">
+          <h3>Riwayat Perubahan Stok</h3>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Sumber</th>
+                  <th className="num-col">Jumlah</th>
+                  <th>Catatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((m) => (
+                  <tr key={m.id}>
+                    <td className="muted">{new Date(m.createdAt).toLocaleString("id-ID")}</td>
+                    <td>
+                      <span className={`badge ${m.source === "purchase" ? "badge-success" : m.source === "sale" ? "badge-danger" : "badge-warning"}`}>
+                        {sourceLabel(m.source)}
+                      </span>
+                    </td>
+                    <td
+                      className="num-col"
+                      style={{ color: m.quantity > 0 ? "var(--success)" : "var(--danger)", fontWeight: 600 }}
+                    >
+                      {m.quantity > 0 ? "+" : ""}
+                      {m.quantity}
+                    </td>
+                    <td className="muted">{m.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

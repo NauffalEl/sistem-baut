@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 export const createProductSchema = z.object({
-  name: z.string().min(1, "Name required").max(200, "Name too long"),
-  sku: z.string().min(1, "SKU required").max(100, "SKU too long"),
-  categoryId: z.string().min(1, "Category required"),
-  type: z.string().max(100).optional(),
-  size: z.string().max(100).optional(),
-  material: z.string().max(100).optional(),
+  name: z.string().min(1, "Nama produk wajib diisi").max(200, "Nama produk maksimal 200 karakter"),
+  sku: z.string().min(1, "SKU wajib diisi").max(100, "SKU maksimal 100 karakter"),
+  categoryId: z.string().min(1, "Kategori wajib dipilih"),
+  type: z.string().max(100, "Jenis maksimal 100 karakter").optional(),
+  size: z.string().max(100, "Ukuran maksimal 100 karakter").optional(),
+  material: z.string().max(100, "Material maksimal 100 karakter").optional(),
   unit: z.string().default("pcs"),
-  lastBuyPrice: z.number().min(0).default(0),
-  sellingPrice: z.number().min(0).default(0),
-  minStock: z.number().int().min(0).default(0),
+  lastBuyPrice: z.number().min(0, "Harga beli tidak boleh negatif").default(0),
+  sellingPrice: z.number().min(0, "Harga jual tidak boleh negatif").default(0),
+  minStock: z.number().int().min(0, "Stok minimum tidak boleh negatif").default(0),
 });
 
 export const updateProductSchema = z.object({
@@ -27,12 +27,12 @@ export const updateProductSchema = z.object({
 });
 
 export const createCategorySchema = z.object({
-  name: z.string().min(1, "Name required").max(100, "Name too long"),
+  name: z.string().min(1, "Nama kategori wajib diisi").max(100, "Nama kategori maksimal 100 karakter"),
 });
 
 export const createProductAliasSchema = z.object({
-  productId: z.string().min(1, "Product ID required"),
-  alias: z.string().min(1, "Alias required").max(200, "Alias too long"),
+  productId: z.string().min(1, "ID produk wajib diisi"),
+  alias: z.string().min(1, "Alias wajib diisi").max(200, "Alias maksimal 200 karakter"),
 });
 
 export const productSearchSchema = z.object({

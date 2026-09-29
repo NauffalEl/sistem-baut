@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="hexLightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="iconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A"/><stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#iconBg)"/>
+  <g transform="translate(256,262)">
+    <defs><clipPath id="clipI"><circle cx="0" cy="0" r="66.0"/></clipPath></defs>
+    <circle cx="0" cy="0" r="114.3" fill="url(#glowGrad)" opacity="0.35"/>
+    <polygon points="0.0,-165.0 -142.9,-82.5 -142.9,82.5 -0.0,165.0 142.9,82.5 142.9,-82.5" fill="none" stroke="#3B82F6" stroke-width="28.3" stroke-linejoin="round"/>
+    <polygon points="0.0,-165.0 142.9,-82.5 142.9,82.5 0.0,165.0" fill="#1E3A8A" opacity="0.9"/>
+    <polygon points="0.0,-165.0 -142.9,-82.5 -142.9,82.5 0.0,165.0" fill="url(#hexLightGrad)" opacity="0.85"/>
+    <circle cx="0" cy="0" r="88.4" fill="#0F172A" stroke="url(#accentGrad)" stroke-width="14.1"/>
+    <g fill="#F8FAFC" clip-path="url(#clipI)"><rect x="-63.2" y="-44.785714285714285" width="4" height="51.857142857142854"/><rect x="-56.6" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="-51.7" y="-44.785714285714285" width="7" height="51.857142857142854"/><rect x="-41.8" y="-44.785714285714285" width="3" height="51.857142857142854"/><rect x="-36.0" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="-31.8" y="-44.785714285714285" width="6" height="51.857142857142854"/><rect x="-23.6" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="-18.6" y="-44.785714285714285" width="7" height="51.857142857142854"/><rect x="-8.7" y="-44.785714285714285" width="3" height="51.857142857142854"/><rect x="-2.9" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="1.2" y="-44.785714285714285" width="5" height="51.857142857142854"/><rect x="8.7" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="13.6" y="-44.785714285714285" width="7" height="51.857142857142854"/><rect x="22.7" y="-44.785714285714285" width="3" height="51.857142857142854"/><rect x="28.5" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="32.7" y="-44.785714285714285" width="6" height="51.857142857142854"/><rect x="40.9" y="-44.785714285714285" width="2" height="51.857142857142854"/><rect x="45.9" y="-44.785714285714285" width="4" height="51.857142857142854"/><rect x="52.5" y="-44.785714285714285" width="3" height="51.857142857142854"/><rect x="58.3" y="-44.785714285714285" width="5" height="51.857142857142854"/></g>
+    <text x="0" y="33.0" font-family="sans-serif" font-size="13.0" font-weight="700" fill="#CBD5E1" text-anchor="middle" letter-spacing="2" clip-path="url(#clipI)">12345 67890</text>
+</svg>

@@ -3,23 +3,36 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { ThemeToggle } from "./ThemeToggle";
+import { LogoutButton } from "./LogoutButton";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", badge: null },
-  { href: "/products", label: "Products", badge: null },
-  { href: "/inventory", label: "Inventory", badge: null },
-  { href: "/purchases", label: "Purchases", badge: null },
-  { href: "/sales", label: "Sales", badge: null },
-  { href: "/ocr", label: "OCR Receipt", badge: "AI" },
+/** Pages a non-admin user is allowed to reach. */
+const USER_NAV = ["/dashboard", "/products", "/inventory", "/sales"];
+
+const ALL_NAV_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", badge: null as string | null },
+  { href: "/products", label: "Produk", badge: null as string | null },
+  { href: "/inventory", label: "Inventori", badge: null as string | null },
+  { href: "/purchases", label: "Pembelian", badge: null as string | null },
+  { href: "/sales", label: "Penjualan", badge: null as string | null },
+  { href: "/suppliers", label: "Supplier", badge: null as string | null },
+  { href: "/categories", label: "Kategori", badge: null as string | null },
   { href: "/ai-agent", label: "AI Advisor", badge: "Auto" },
-  { href: "/suppliers", label: "Suppliers", badge: null },
-  { href: "/categories", label: "Categories", badge: null },
 ];
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session, status: sessionStatus } = useSession();
+
+  // While the session is still resolving, render the full admin nav to avoid
+  // a sidebar flash. It is replaced as soon as the role is known.
+  const isAdmin = sessionStatus === "loading" || session?.user?.role === "ADMIN";
+  const navItems = isAdmin
+    ? ALL_NAV_ITEMS
+    : ALL_NAV_ITEMS.filter((i) => USER_NAV.includes(i.href));
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -51,10 +64,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
       <aside className={`app-sidebar ${mobileOpen ? "is-mobile-open" : ""}`}>
         {/* Brand */}
         <div className="sidebar-brand">
-          <div className="brand-mark" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
+          <div className="brand-mark" aria-hidden="true" style={{ background: "none", boxShadow: "none", width: 32, height: 32 }}>
+            <img src="/brand-logo.svg" alt="Logo" width="32" height="32" style={{ borderRadius: 6 }} />
           </div>
           <div className="brand-text">
             <span className="brand-name">BAUT.ID</span>
@@ -116,11 +127,15 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         {/* Footer info in sidebar */}
         <div className="sidebar-footer">
           <div className="user-capsule">
-            <div className="user-avatar" aria-hidden="true">A</div>
+            <div className="user-avatar" aria-hidden="true">
+              {(session?.user?.name ?? "?").charAt(0).toUpperCase()}
+            </div>
             {!collapsed && (
               <div className="user-meta">
-                <span className="user-name">Admin Toko</span>
-                <span className="user-role">Administrator</span>
+                <span className="user-name">{session?.user?.name ?? "Memuat…"}</span>
+                <span className="user-role">
+                  {isAdmin && sessionStatus !== "loading" ? "Administrator" : "Staff"}
+                </span>
               </div>
             )}
           </div>
@@ -156,6 +171,8 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
               <span className="live-dot" />
               Online
             </span>
+            <ThemeToggle />
+            <LogoutButton />
           </div>
         </header>
 
@@ -204,13 +221,6 @@ function renderNavIcon(href: string) {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="1" x2="12" y2="23" />
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-        </svg>
-      );
-    case "/ocr":
-      return (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-          <circle cx="12" cy="13" r="4" />
         </svg>
       );
     case "/ai-agent":

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { use } from "react";
 import Link from "next/link";
 import ProductForm from "@/components/productForm";
@@ -21,60 +20,84 @@ type Product = {
   active: boolean;
 };
 
+type Alias = { id: string; alias: string };
+
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
+  const [aliases, setAliases] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([fetchCategories(), fetchProduct()]).finally(() => setLoading(false));
-  }, [id]);
+    let active = true;
 
-  async function fetchCategories() {
-    try {
-      const res = await fetch("/api/categories");
-      if (!res.ok) throw new Error("Gagal load kategori");
-      const data = await res.json();
-      setCategories(data.categories || []);
-    } catch (e: any) {
-      setError(e.message || "Error");
-    }
-  }
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const [catRes, prodRes, aliasRes] = await Promise.all([
+          fetch("/api/categories", { cache: "no-store" }),
+          fetch(`/api/products/${id}`, { cache: "no-store" }),
+          fetch(`/api/product-aliases?productId=${id}`, { cache: "no-store" }),
+        ]);
 
-  async function fetchProduct() {
-    try {
-      const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal load produk");
+        if (!prodRes.ok) {
+          const data = await prodRes.json().catch(() => null);
+          throw new Error(data?.error || "Produk tidak ditemukan");
+        }
+        if (!catRes.ok) throw new Error("Gagal memuat kategori");
+
+        const catData = await catRes.json();
+        const prodData = await prodRes.json();
+        const aliasData = aliasRes.ok ? await aliasRes.json() : { aliases: [] };
+
+        if (!active) return;
+        setCategories(catData.categories || []);
+        setProduct(prodData.product);
+        setAliases((aliasData.aliases || []).map((a: Alias) => a.alias));
+      } catch (e: any) {
+        if (!active) return;
+        setError(e.message || "Gagal memuat data produk");
+      } finally {
+        if (active) setLoading(false);
       }
-      const data = await res.json();
-      setProduct(data.product);
-    } catch (e: any) {
-      setError(e.message || "Error");
     }
-  }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Edit Product</h1>
-        <Link href={`/products/${id}`} className="btn-secondary" style={{ textDecoration: "none" }}>
-          Back to Product
-        </Link>
+      <div className="page-head">
+        <div>
+          <h1>Edit Produk</h1>
+          <p className="page-sub">Perbarui data, harga, dan nama alternatif produk</p>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href={`/products/${id}/aliases`} className="btn-secondary">
+            Kelola Alias
+          </Link>
+          <Link href={`/products/${id}`} className="btn-ghost">
+            ← Kembali
+          </Link>
+        </div>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="message error">{error}</p>}
+
       {loading ? (
-        <p>Loading...</p>
+        <p className="muted">Memuat data produk…</p>
       ) : product ? (
         <div className="card">
           <ProductForm
             categories={categories}
             productId={product.id}
+            initialAliases={aliases}
             initialData={{
               name: product.name,
               sku: product.sku,
@@ -83,16 +106,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               size: product.size || undefined,
               material: product.material || undefined,
               unit: product.unit,
-              lastBuyPrice: product.lastBuyPrice,
-              sellingPrice: product.sellingPrice,
+              sellingPrice: String(product.sellingPrice),
               minStock: product.minStock,
               active: product.active,
             }}
           />
         </div>
-      ) : (
-        <p>Produk tidak ditemukan.</p>
-      )}
+      ) : !error ? (
+        <div className="card empty-state">Produk tidak ditemukan.</div>
+      ) : null}
     </div>
   );
 }

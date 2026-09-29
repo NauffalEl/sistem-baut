@@ -25,20 +25,9 @@ export const authOptions: NextAuthConfig = {
 
         const { email, password } = parsed.data;
 
-        // Hardcoded admin login
-        if (email === "admin@gmail.com" && password === "admin") {
-          return {
-            id: "admin-hardcoded",
-            email: "admin@gmail.com",
-            name: "Admin",
-            role: "ADMIN",
-          };
-        }
-
         // Regular user login from DB
         const user = await prisma.user.findUnique({
           where: { email },
-          include: { role: true },
         });
 
         if (!user || !user.active) return null;
@@ -46,11 +35,17 @@ export const authOptions: NextAuthConfig = {
         const ok = await verifyPassword(password, user.password);
         if (!ok) return null;
 
+        // Fetch role name separately to avoid unnecessary join
+        const role = await prisma.role.findUnique({
+          where: { id: user.roleId },
+          select: { name: true },
+        });
+
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role.name,
+          role: role?.name ?? "USER",
         };
       },
     }),

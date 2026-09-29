@@ -20,6 +20,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  // Captured before the body is consumed, so the catch block can still mark the
+  // receipt as failed.
+  let pendingReceiptId: string | null = null;
+
   try {
     await requireRole("ADMIN");
 
@@ -27,6 +31,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const existingReceiptId = formData.get("receiptId") as string | null;
+    pendingReceiptId = existingReceiptId;
 
     if (!file && !existingReceiptId) {
       return NextResponse.json(
@@ -90,21 +95,21 @@ export async function POST(req: NextRequest) {
       );
     }
     // Update receipt status to failed if there's an error
-    try {
-      const { prisma } = await import("@/lib/db");
-      const { getReceipt } = await import("@/lib/ocr/service");
-      const formData = await req.formData();
-      const receiptId = formData.get("receiptId") as string | null;
-      if (receiptId) {
-        const receipt = await getReceipt(receiptId);
+    if (pendingReceiptId) {
+      try {
+        const { prisma } = await import("@/lib/db");
+        const { getReceipt } = await import("@/lib/ocr/service");
+        const receipt = await getReceipt(pendingReceiptId);
         if (receipt) {
           await prisma.receipt.update({
-            where: { id: receiptId },
+            where: { id: pendingReceiptId },
             data: { status: "failed" },
           });
         }
+      } catch {
+        // Never let bookkeeping hide the original error.
       }
-    } catch {}
+    }
     return NextResponse.json(
       { error: error.message || "Internal server error" },
       { status: 500 }

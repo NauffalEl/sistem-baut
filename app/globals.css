@@ -82,6 +82,55 @@ button {
   --sidebar-w-collapsed: 68px;
   --topbar-h: 60px;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Translucent topbar base — themed so it never glows white in dark mode */
+  --topbar-bg: rgba(255, 255, 255, 0.82);
+
+  /* Chart surface lines (recharts reads these as literals, keep in sync with --line) */
+  --chart-grid: #e4e8ef;
+  --chart-axis: #6b7280;
+}
+
+/* ── Dark theme ─────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #1c232c;
+  --surface-sunken: #11161d;
+
+  --ink: #e6edf3;
+  --ink-soft: #c2ccd6;
+  --muted: #8b97a5;
+  --faint: #6b7683;
+
+  --line: #232b35;
+  --line-strong: #333d49;
+
+  --accent: #4d8dfa;
+  --accent-hover: #6ba1ff;
+  --accent-soft: #16243d;
+  --accent-ring: rgba(77, 141, 250, 0.24);
+
+  --success: #3fb950;
+  --success-soft: #10261a;
+  --danger: #f85149;
+  --danger-soft: #2d1517;
+  --warning: #d29922;
+  --warning-soft: #2b2010;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.55);
+
+  --topbar-bg: rgba(21, 27, 35, 0.82);
+
+  --chart-grid: #232b35;
+  --chart-axis: #8b97a5;
+}
+
+[data-theme="dark"] .brand-mark {
+  background: linear-gradient(150deg, var(--accent) 0%, #2a5cbb 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 /* ── App shell ───────────────────────────────────────────── */
@@ -344,7 +393,7 @@ button {
   justify-content: space-between;
   gap: 16px;
   padding: 0 24px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--topbar-bg);
   backdrop-filter: saturate(180%) blur(8px);
   border-bottom: 1px solid var(--line);
   position: sticky;
@@ -388,7 +437,25 @@ button {
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+.topbar-icon-btn {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+.topbar-icon-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .live-status-pill {
   display: inline-flex;
@@ -426,6 +493,11 @@ button {
     var(--bg);
   padding: 24px;
 }
+[data-theme="dark"] .auth-canvas {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #16243d 0%, transparent 60%),
+    var(--bg);
+}
 
 /* ── Container ───────────────────────────────────────────── */
 .container {
@@ -453,6 +525,172 @@ button {
   margin-top: 4px;
   font-size: 13.5px;
   color: var(--muted);
+}
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(16, 24, 40, 0.5);
+  backdrop-filter: blur(3px);
+  animation: modal-fade 0.16s var(--ease);
+}
+.modal-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-pop);
+  animation: modal-rise 0.18s var(--ease);
+}
+.modal-card-sm { max-width: 420px; }
+.modal-card-lg { max-width: 680px; }
+.modal-title {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.modal-desc {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Destructive action — red text, no background */
+.action-link.delete {
+  color: var(--danger);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.action-link.delete:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+/* Numeric + action column alignment */
+.num-col { text-align: right; }
+.action-col { text-align: right; width: 1%; white-space: nowrap; }
+
+/* ── Transaction line items (purchase / sale forms) ─────── */
+.line-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.line-item-product { flex: 2 1 200px; width: auto; }
+.line-item-qty { flex: 0 0 82px; width: 82px; }
+.line-item-price { flex: 0 0 118px; width: 118px; }
+.line-item-subtotal {
+  flex: 0 0 120px;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Total summary bar */
+.total-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.total-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* Inline stock-adjustment qty input */
+.qty-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 2px solid var(--accent);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  -moz-appearance: textfield;
+}
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Visually hidden but focusable file input */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Chart grid — 2 columns per row on larger screens */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+@media (min-width: 1200px) {
+  .chart-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.chart-grid > .card {
+  margin-bottom: 20px;
+}
+/* Chart container wrapper to keep charts above report */
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.chart-wrapper > .chart-grid {
+  order: 1;
+}
+.chart-wrapper > .report-card {
+  order: 2;
 }
 
 /* ── Cards ───────────────────────────────────────────────── */
@@ -523,6 +761,57 @@ button {
   color: var(--faint);
 }
 
+/* ── Table Action Buttons ────────────────────────────────── */
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.table-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--accent);
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.table-action:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.table-action.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.table-action.danger:hover {
+  background: var(--danger);
+  color: var(--surface);
+}
+.table-action.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.table-action.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.table-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn-primary,
 .btn-secondary,
@@ -563,7 +852,7 @@ button {
   background: var(--danger);
   color: #fff;
 }
-.btn-danger:hover { background: #a8232a; }
+.btn-danger:hover { background: var(--danger); filter: brightness(0.92); }
 .btn-ghost {
   background: transparent;
   color: var(--muted);
@@ -711,12 +1000,12 @@ td .row-actions a:hover {
 .message.success {
   background: var(--success-soft);
   color: var(--success);
-  border-color: #b9e6cd;
+  border-color: var(--line-strong);
 }
 .message.error {
   background: var(--danger-soft);
   color: var(--danger);
-  border-color: #f5c2c4;
+  border-color: var(--line-strong);
 }
 .error {
   color: var(--danger);
@@ -815,8 +1104,9 @@ td .row-actions a:hover {
   border-color: var(--success);
 }
 .action-btn.enabled:hover {
-  background: #05653e;
-  border-color: #05653e;
+  background: var(--success);
+  border-color: var(--success);
+  filter: brightness(0.92);
 }
 .action-btn.disabled {
   background: var(--danger);
@@ -824,26 +1114,71 @@ td .row-actions a:hover {
   border-color: var(--danger);
 }
 .action-btn.disabled:hover {
-  background: #a8232a;
-  border-color: #a8232a;
+  background: var(--danger);
+  border-color: var(--danger);
+  filter: brightness(0.92);
 }
 .action-link {
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
-  padding: 4px 8px;
-  border-radius: var(--r-sm);
-  transition: background 0.15s ease;
+  background: transparent !important;
+  border: none !important;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  text-decoration: none;
+  line-height: 1.2;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
 }
 .action-link:hover {
-  background: var(--accent-soft);
-  text-decoration: none !important;
+  color: var(--accent);
+  background: transparent !important;
+  text-decoration: underline;
 }
+.action-link:focus,
+.action-link:focus-visible {
+  background: transparent !important;
+  box-shadow: none;
+}
+.action-link:disabled {
+  background: transparent !important;
+  opacity: 0.55;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+/* Edit / primary action — accent blue, no background */
+.action-link.edit {
+  color: var(--accent);
+  background: transparent !important;
+  border: none !important;
+}
+.action-link.edit:hover {
+  background: transparent !important;
+  text-decoration: underline;
+}
+/* Destructive action — red text, no background */
 .action-link.delete {
   color: var(--danger);
+  background: transparent !important;
+  border: none !important;
 }
 .action-link.delete:hover {
-  background: var(--danger-soft);
+  background: transparent !important;
+  text-decoration: underline;
+}
+
+/* Two-column form grid (supplier, etc.) */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 16px;
+  margin-bottom: 14px;
+}
+.form-group-wide {
+  grid-column: 1 / -1;
 }
 .action-select {
   padding: 8px 12px;

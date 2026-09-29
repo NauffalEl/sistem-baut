@@ -97,6 +97,12 @@ export async function deleteCategory(id: string) {
 }
 
 export async function createProductAlias(data: CreateProductAliasInput) {
+  // `alias` is globally unique, so a duplicate must return a readable message
+  // instead of a raw Prisma unique-constraint error.
+  const existing = await prisma.productAlias.findUnique({ where: { alias: data.alias } });
+  if (existing) {
+    throw new Error(`Alias "${data.alias}" sudah dipakai produk lain`);
+  }
   return prisma.productAlias.create({
     data,
     include: { product: true },

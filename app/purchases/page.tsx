@@ -1,7 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { TrashIcon } from "@/components/icons/TrashIcon";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { useConfirmDialog } from "@/app/components/useConfirmDialog";
+
+type PurchaseItem = {
+  id: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+};
 
 type Purchase = {
   id: string;
@@ -11,20 +22,38 @@ type Purchase = {
   note: string | null;
   createdAt: string;
   supplier: { name: string };
-  items: Array<{
-    id: string;
-    quantity: number;
-    price: number;
-    subtotal: number;
-    productId: string;
-  }>;
+  items: PurchaseItem[];
+};
+
+const rupiah = (n: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(n ?? 0);
+
+const STATUS_BADGE: Record<string, string> = {
+  draft: "badge-warning",
+  confirmed: "badge-success",
+  cancelled: "badge-muted",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  confirmed: "Dikonfirmasi",
+  cancelled: "Dibatalkan",
 };
 
 export default function PurchasesPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const { dialogProps, ask } = useConfirmDialog();
 
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
@@ -32,128 +61,173 @@ export default function PurchasesPage() {
     try {
       const params = new URLSearchParams();
       if (filter) params.set("status", filter);
+      if (search.trim()) params.set("q", search.trim());
       const res = await fetch(`/api/purchases?${params}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Gagal load purchases");
+      if (!res.ok) throw new Error("Gagal load pembelian");
       const data = await res.json();
       setPurchases(data.items);
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, search]);
 
   useEffect(() => {
-    fetchPurchases();
-  }, [fetchPurchases]);
+    const t = setTimeout(fetchPurchases, search ? 300 : 0);
+    return () => clearTimeout(t);
+  }, [fetchPurchases, search]);
 
-  async function handleConfirm(id: string) {
-    if (!confirm("Confirm this purchase? Stock will increase.")) return;
-    try {
-      const res = await fetch(`/api/purchases/${id}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Gagal confirm");
-        return;
+  const handleConfirm = (id: string) => {
+    ask(
+      "Konfirmasi pembelian?",
+      async () => {
+        try {
+          const res = await fetch(`/api/purchases/${id}/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "confirm" }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || "Gagal konfirmasi pembelian");
+            return;
+          }
+          await fetchPurchases();
+        } catch {
+          setError("Koneksi bermasalah. Coba lagi.");
+        }
+      },
+      {
+        description: "Stok produk akan bertambah dan harga tersimpan ke riwayat.",
+        confirmLabel: "Konfirmasi",
+        tone: "primary",
       }
-      fetchPurchases();
-    } catch {
-      alert("Network error");
-    }
-  }
+    );
+  };
 
-  async function handleCancel(id: string) {
-    if (!confirm("Cancel this purchase?")) return;
-    try {
-      const res = await fetch(`/api/purchases/${id}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "cancel" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Gagal cancel");
-        return;
-      }
-      fetchPurchases();
-    } catch {
-      alert("Network error");
-    }
-  }
-
-  const statusColor = (s: string) =>
-    s === "confirmed" ? "#16a34a" : s === "cancelled" ? "#ef4444" : "#f59e0b";
+  const handleCancel = (id: string, no: string) => {
+    ask(
+      `Batalkan pembelian ${no}?`,
+      async () => {
+        try {
+          const res = await fetch(`/api/purchases/${id}/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "cancel" }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || "Gagal membatalkan pembelian");
+            return;
+          }
+          await fetchPurchases();
+        } catch {
+          setError("Koneksi bermasalah. Coba lagi.");
+        }
+      },
+      { description: "Status diubah menjadi dibatalkan.", confirmLabel: "Batalkan PO" }
+    );
+  };
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Purchases</h1>
-        <Link href="/purchases/new" className="btn-primary" style={{ textDecoration: "none" }}>
-          + New Purchase
-        </Link>
+      <div className="page-head">
+        <div>
+          <h1>Pembelian</h1>
+          <p className="page-sub">Kelola purchase order dan penerimaan barang dari supplier</p>
+        </div>
+        {isAdmin && (
+          <Link href="/purchases/new" className="btn-primary">
+            + Pembelian Baru
+          </Link>
+        )}
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="message error">{error}</p>}
 
-      <div style={{ marginBottom: 16 }}>
+      <div className="filters">
+        <input
+          className="grow"
+          type="text"
+          placeholder="Cari nomor PO atau supplier…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">All Status</option>
+          <option value="">Semua Status</option>
           <option value="draft">Draft</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="confirmed">Dikonfirmasi</option>
+          <option value="cancelled">Dibatalkan</option>
         </select>
       </div>
 
       {loading ? (
-        <p>Loading...</p>
+        <p className="muted">Memuat data…</p>
       ) : purchases.length === 0 ? (
-        <p>No purchases found.</p>
+        <div className="card empty-state">
+          Belum ada pembelian. {isAdmin && "Mulai dengan membuat purchase order baru."}
+        </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>PO No</th>
-              <th>Supplier</th>
-              <th>Items</th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {purchases.map((p) => (
-              <tr key={p.id}>
-                <td>{p.purchaseNo}</td>
-                <td>{p.supplier.name}</td>
-                <td>{p.items.length}</td>
-                <td>{p.total}</td>
-                <td style={{ color: statusColor(p.status), fontWeight: 600 }}>{p.status}</td>
-                <td>{new Date(p.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <Link href={`/purchases/${p.id}`}>View</Link>
-                  {p.status === "draft" && (
-                    <>
-                      {" | "}
-                      <button onClick={() => handleConfirm(p.id)} style={{ color: "#16a34a", background: "none", border: "none", cursor: "pointer" }}>
-                        Confirm
-                      </button>
-                      {" | "}
-                      <button onClick={() => handleCancel(p.id)} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}>
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </td>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>No. PO</th>
+                <th>Supplier</th>
+                <th className="num-col">Item</th>
+                <th className="num-col">Total</th>
+                <th>Status</th>
+                <th>Tanggal</th>
+                <th className="action-col">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {purchases.map((p) => (
+                <tr key={p.id}>
+                  <td className="num">{p.purchaseNo}</td>
+                  <td style={{ fontWeight: 600, color: "var(--ink)" }}>{p.supplier.name}</td>
+                  <td className="num">{p.items.length}</td>
+                  <td className="num">{rupiah(p.total)}</td>
+                  <td>
+                    <span className={`badge ${STATUS_BADGE[p.status] ?? "badge-muted"}`}>
+                      {STATUS_LABEL[p.status] ?? p.status}
+                    </span>
+                  </td>
+                  <td className="muted">{new Date(p.createdAt).toLocaleDateString("id-ID")}</td>
+                  <td>
+                    <div className="row-actions">
+                      <Link href={`/purchases/${p.id}`} className="action-link">
+                        Lihat
+                      </Link>
+                      {isAdmin && p.status === "draft" && (
+                        <>
+                          <button
+                            onClick={() => handleConfirm(p.id)}
+                            className="table-action"
+                          >
+                            Konfirmasi
+                          </button>
+                          <button
+                            onClick={() => handleCancel(p.id, p.purchaseNo)}
+                            className="action-link delete"
+                            aria-label={`Batalkan ${p.purchaseNo}`}
+                            title="Batalkan"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

@@ -29,6 +29,14 @@ export interface DashboardData {
     lastRun: Date | null;
     nextRun: Date | null;
   } | null;
+  latestReport: {
+    id: string;
+    title: string;
+    content: string;
+    type: string;
+    status: string;
+    createdAt: Date;
+  } | null;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -101,6 +109,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     orderBy: { createdAt: "desc" },
   });
 
+  // Latest AI report (read-only on the dashboard)
+  const latestReport = await prisma.aIReport.findFirst({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      type: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
   return {
     totalProducts,
     activeProducts,
@@ -128,5 +149,6 @@ export async function getDashboardData(): Promise<DashboardData> {
           nextRun: aiAgentSettings.nextRun,
         }
       : null,
+    latestReport,
   };
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth/session";
+import { requireAuth, requireRole } from "@/lib/auth/session";
 import { createProductAliasSchema } from "@/lib/products/validation";
 import {
   createProductAlias,
@@ -9,14 +9,18 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     const productId = req.nextUrl.searchParams.get("productId");
     if (!productId) {
-      return NextResponse.json({ error: "productId required" }, { status: 400 });
+      return NextResponse.json({ error: "ID produk wajib diisi" }, { status: 400 });
     }
     const aliases = await getProductAliases(productId);
     return NextResponse.json({ aliases });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Product aliases GET error:", error);
+    if (error.message === "Not authenticated") {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -43,17 +47,17 @@ export async function POST(req: NextRequest) {
       productId,
       alias: parsed.data.alias,
     });
-    return NextResponse.json(
-      { message: "Alias created successfully", alias },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Alias berhasil disimpan", alias }, { status: 201 });
   } catch (error: any) {
     console.error("Product alias POST error:", error);
     if (error.message === "Requires ADMIN role") {
       return NextResponse.json(
-        { error: "Unauthorized, ADMIN role required" },
-        { status: 401 }
+        { error: "Hanya admin yang dapat menambah alias" },
+        { status: 403 }
       );
+    }
+    if (String(error?.message || "").startsWith("Alias")) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
     }
     return NextResponse.json(
       { error: "Internal server error" },
@@ -67,16 +71,16 @@ export async function DELETE(req: NextRequest) {
     await requireRole("ADMIN");
     const id = req.nextUrl.searchParams.get("id");
     if (!id) {
-      return NextResponse.json({ error: "id required" }, { status: 400 });
+      return NextResponse.json({ error: "ID alias wajib diisi" }, { status: 400 });
     }
     await deleteProductAlias(id);
-    return NextResponse.json({ message: "Alias deleted successfully" });
+    return NextResponse.json({ message: "Alias berhasil dihapus" });
   } catch (error: any) {
     console.error("Product alias DELETE error:", error);
     if (error.message === "Requires ADMIN role") {
       return NextResponse.json(
-        { error: "Unauthorized, ADMIN role required" },
-        { status: 401 }
+        { error: "Hanya admin yang dapat menghapus alias" },
+        { status: 403 }
       );
     }
     return NextResponse.json(

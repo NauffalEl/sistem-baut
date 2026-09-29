@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 650" width="800" height="650">
+  <defs>
+    <linearGradient id="hexLightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/><stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#F4F7FA"/>
+    </linearGradient>
+  </defs>  <g filter="url(#dropShadow)">
+    <defs><clipPath id="clip400200"><circle cx="400" cy="200" r="56.0"/></clipPath></defs>
+    <circle cx="400" cy="200" r="97.0" fill="url(#glowGrad)" opacity="0.35"/>
+    <polygon points="400.0,60.0 278.8,130.0 278.8,270.0 400.0,340.0 521.2,270.0 521.2,130.0" fill="none" stroke="#1E293B" stroke-width="24.0" stroke-linejoin="round"/>
+    <polygon points="400.0,60.0 521.2,130.0 521.2,270.0 400.0,340.0" fill="#1E3A8A" opacity="0.9"/>
+    <polygon points="400.0,60.0 278.8,130.0 278.8,270.0 400.0,340.0" fill="url(#hexLightGrad)" opacity="0.85"/>
+    <circle cx="400" cy="200" r="75.0" fill="#0F172A" stroke="url(#accentGrad)" stroke-width="12.0"/>
+    <g fill="#F8FAFC" clip-path="url(#clip400200)"><rect x="346.3" y="162.0" width="4" height="44.0"/><rect x="351.9" y="162.0" width="2" height="44.0"/><rect x="356.2" y="162.0" width="6" height="44.0"/><rect x="364.6" y="162.0" width="3" height="44.0"/><rect x="369.5" y="162.0" width="1" height="44.0"/><rect x="373.0" y="162.0" width="5" height="44.0"/><rect x="380.0" y="162.0" width="2" height="44.0"/><rect x="384.2" y="162.0" width="6" height="44.0"/><rect x="392.6" y="162.0" width="3" height="44.0"/><rect x="397.5" y="162.0" width="1" height="44.0"/><rect x="401.1" y="162.0" width="4" height="44.0"/><rect x="407.4" y="162.0" width="2" height="44.0"/><rect x="411.6" y="162.0" width="6" height="44.0"/><rect x="419.3" y="162.0" width="3" height="44.0"/><rect x="424.2" y="162.0" width="1" height="44.0"/><rect x="427.7" y="162.0" width="5" height="44.0"/><rect x="434.7" y="162.0" width="2" height="44.0"/><rect x="438.9" y="162.0" width="4" height="44.0"/><rect x="444.5" y="162.0" width="3" height="44.0"/><rect x="449.5" y="162.0" width="4" height="44.0"/></g>
+    <text x="400" y="228.0" font-family="sans-serif" font-size="11.0" font-weight="700"
+      fill="#CBD5E1" text-anchor="middle" letter-spacing="2" clip-path="url(#clip400200)">12345 67890</text></g>
+  <text x="222.3" y="440" font-family="sans-serif" font-size="52" font-weight="900" fill="#0F172A" letter-spacing="-1">Bolt</text>
+  <text x="337.3" y="440" font-family="sans-serif" font-size="52" font-weight="400" fill="#2563EB" letter-spacing="-1">Inventory</text>
+  <text x="400" y="482" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="800" fill="#64748B" letter-spacing="6">SMART MANAGEMENT SOLUTIONS</text>
+</svg>

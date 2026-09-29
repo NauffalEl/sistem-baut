@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 type Product = {
   id: string;
@@ -15,6 +16,7 @@ type Product = {
 };
 
 export default function ProductsPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,8 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterActive, setFilterActive] = useState("");
   const router = useRouter();
+
+  const isAdmin = sessionStatus !== "loading" && session?.user?.role === "ADMIN";
 
   useEffect(() => {
     fetchCategories();
@@ -147,13 +151,14 @@ export default function ProductsPage() {
                   <td>
                     <div className="row-actions">
                       <Link href={`/products/${p.id}`} className="action-link">Lihat</Link>
-                      <Link href={`/products/${p.id}/edit`} className="action-link">Edit</Link>
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="action-link delete"
-                      >
-                        Hapus
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="action-link delete"
+                        >
+                          Hapus
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

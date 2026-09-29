@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { use } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { useConfirmDialog } from "@/app/components/useConfirmDialog";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 
-type SaleItem = {
+type Item = {
   id: string;
   quantity: number;
   price: number;
@@ -19,31 +21,34 @@ type Sale = {
   total: number;
   note: string | null;
   createdAt: string;
-  items: SaleItem[];
+  items: Item[];
 };
 
-export default function SaleDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+const rupiah = (n: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n ?? 0);
+
+const STATUS_LABEL: Record<string, string> = { draft: "Draft", confirmed: "Dikonfirmasi", cancelled: "Dibatalkan" };
+
+export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+  const { dialogProps, ask } = useConfirmDialog();
+
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [deposit, setDeposit] = useState<number | null>(null);
 
   const fetchSale = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await fetch(`/api/sales/${id}`, { cache: "no-store" });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal load sale");
+        const d = await res.json();
+        throw new Error(d.error || "Gagal memuat penjualan");
       }
-      const data = await res.json();
-      setSale(data.sale);
+      const d = await res.json();
+      setSale(d.sale);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -51,116 +56,103 @@ export default function SaleDetailPage({
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchSale();
-  }, [fetchSale]);
+  useEffect(() => { fetchSale(); }, [fetchSale]);
 
-  async function handleAction(action: "confirm" | "cancel" | "deposit") {
-    if (action === "confirm") {
-      if (!confirm("Confirm? Stock akan berkurang.")) return;
-    }
-    if (action === "cancel") {
-      if (!confirm("Cancel sale ini?")) return;
-    }
-
-    try {
-      const res = await fetch(`/api/sales/${id}/confirm`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Gagal");
-        return;
+  const handleAction = (action: "confirm" | "cancel") => {
+    ask(
+      action === "confirm" ? "Konfirmasi penjualan?" : "Batalkan penjualan?",
+      async () => {
+        try {
+          const res = await fetch(`/api/sales/${id}/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || "Gagal");
+            return;
+          }
+          await fetchSale();
+        } catch {
+          setError("Koneksi bermasalah");
+        }
+      },
+      {
+        description: action === "confirm" ? "Stok produk akan berkurang." : "Status diubah menjadi dibatalkan.",
+        confirmLabel: action === "confirm" ? "Ya, Konfirmasi" : "Ya, Batalkan",
       }
-      if (action === "deposit") {
-        setDeposit(data.deposit ?? data.total);
-      }
-      fetchSale();
-    } catch {
-      alert("Network error");
-    }
-  }
+    );
+  };
 
-  if (loading) return <div className="container"><p>Loading...</p></div>;
-  if (error) return <div className="container"><p className="error">{error}</p></div>;
-  if (!sale) return <div className="container"><p>Sale not found.</p></div>;
+  if (loading) return <div className="container"><p className="muted">Memuat data…</p></div>;
+  if (error) return <div className="container"><p className="message error">{error}</p></div>;
+  if (!sale) return <div className="container"><p className="muted">Penjualan tidak ditemukan.</p></div>;
 
-  const statusColor =
-    sale.status === "confirmed" ? "#16a34a" : sale.status === "cancelled" ? "#ef4444" : "#f59e0b";
+  const totalQty = sale.items.reduce((s, i) => s + i.quantity, 0);
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div className="page-head">
         <div>
           <h1>{sale.saleNo}</h1>
-          <p style={{ margin: 0, color: "#666" }}>
-            {new Date(sale.createdAt).toLocaleDateString()}
+          <p className="page-sub">
+            {sale.status} • {new Date(sale.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/sales" className="btn-secondary" style={{ textDecoration: "none" }}>
-            Back
-          </Link>
-          {sale.status === "draft" && (
+          <Link href="/sales" className="btn-secondary">← Kembali</Link>
+          {isAdmin && sale.status === "draft" && (
             <>
-              <button onClick={() => handleAction("confirm")} className="btn-primary">
-                Confirm
-              </button>
-              <button onClick={() => handleAction("cancel")} className="btn-danger">
-                Cancel
-              </button>
+              <button onClick={() => handleAction("confirm")} className="btn-primary">Konfirmasi</button>
+              <button onClick={() => handleAction("cancel")} className="btn-danger">Batalkan</button>
             </>
-          )}
-          {sale.status === "confirmed" && (
-            <button onClick={() => handleAction("deposit")} style={{ background: "#3b82f6", color: "#fff", border: "none" }}>
-              {deposit !== null ? `Deposit: ${deposit.toLocaleString()}` : "Calculate Deposit"}
-            </button>
           )}
         </div>
       </div>
 
-      {error && <p className="error">{error}</p>}
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <p><strong>Status:</strong>{" "}
-          <span style={{ color: statusColor, fontWeight: 600 }}>{sale.status}</span>
-        </p>
-        {sale.note && <p><strong>Note:</strong> {sale.note}</p>}
-      </div>
+      {sale.note && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <span className="muted" style={{ fontSize: 12.5, fontWeight: 600 }}>Catatan</span>
+          <p style={{ marginTop: 4, fontSize: 13.5 }}>{sale.note}</p>
+        </div>
+      )}
 
       <div className="card">
-        <h3>Items</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>SKU</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sale.items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.product.name}</td>
-                <td>{item.product.sku}</td>
-                <td>{item.quantity}</td>
-                <td>{item.price.toLocaleString()}</td>
-                <td>{item.subtotal.toLocaleString()}</td>
+        <h3>Rincian Penjualan</h3>
+        <div className="table-wrap" style={{ border: "none", borderRadius: 0, boxShadow: "none" }}>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 40 }}>#</th>
+                <th>Produk</th>
+                <th className="num-col">SKU</th>
+                <th className="num-col">Qty</th>
+                <th className="num-col">Harga</th>
+                <th className="num-col">Subtotal</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={4} style={{ textAlign: "right", fontWeight: 600 }}>Total</td>
-              <td style={{ fontWeight: 600 }}>{sale.total.toLocaleString()}</td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {sale.items.map((item, idx) => (
+                <tr key={item.id}>
+                  <td className="muted">{idx + 1}</td>
+                  <td style={{ fontWeight: 600, color: "var(--ink)" }}>{item.product.name}</td>
+                  <td className="num">{item.product.sku}</td>
+                  <td className="num">{item.quantity}</td>
+                  <td className="num">{rupiah(item.price)}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>{rupiah(item.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 14px 0", borderTop: "1px solid var(--line)", marginTop: 12 }}>
+          <span className="muted" style={{ fontSize: 13 }}>{totalQty} item • {STATUS_LABEL[sale.status] ?? sale.status}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{rupiah(sale.total)}</span>
+        </div>
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

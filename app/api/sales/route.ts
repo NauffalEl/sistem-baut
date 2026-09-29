@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/auth/session";
-import { saleSearchSchema } from "@/lib/sales/validation";
-import { getSales } from "@/lib/sales/service";
+import { handleApiError } from "@/lib/security/error-handler";
+import { saleSearchSchema, createSaleSchema } from "@/lib/sales/validation";
+import { getSales, createSale } from "@/lib/sales/service";
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,13 +19,24 @@ export async function GET(req: NextRequest) {
     const data = await getSales(parsed.data);
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error("Sales GET error:", error);
-    if (error.message === "Not authenticated") {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    return handleApiError(error);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireRole("ADMIN");
+    const body = await req.json();
+    const parsed = createSaleSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
     }
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    const sale = await createSale(parsed.data);
+    return NextResponse.json({ message: "Sale created", sale }, { status: 201 });
+  } catch (error: any) {
+    return handleApiError(error);
   }
 }

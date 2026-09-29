@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { TrashIcon } from "@/components/icons/TrashIcon";
+import { ConfirmDialog } from "@/app/components/ConfirmDialog";
+import { useConfirmDialog } from "@/app/components/useConfirmDialog";
 
 type Category = { id: string; name: string };
 
@@ -14,25 +17,25 @@ export default function CategoriesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const { dialogProps, ask } = useConfirmDialog();
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  async function fetchCategories() {
+  const fetchCategories = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
       const res = await fetch("/api/categories", { cache: "no-store" });
-      if (!res.ok) throw new Error("Gagal load kategori");
+      if (!res.ok) throw new Error("Gagal memuat kategori");
       const data = await res.json();
       setCategories(data.categories || []);
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e.message || "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   async function addCategory(e: React.FormEvent) {
     e.preventDefault();
@@ -53,9 +56,9 @@ export default function CategoriesPage() {
       }
       setMessage("Kategori ditambahkan");
       setNewName("");
-      fetchCategories();
+      await fetchCategories();
     } catch {
-      setError("Network error");
+      setError("Koneksi bermasalah. Coba lagi.");
     } finally {
       setSaving(false);
     }
@@ -77,120 +80,154 @@ export default function CategoriesPage() {
         setError(data.error || "Gagal update kategori");
         return;
       }
-      setMessage("Kategori diupdate");
+      setMessage("Kategori diperbarui");
       setEditingId(null);
-      fetchCategories();
+      setEditingName("");
+      await fetchCategories();
     } catch {
-      setError("Network error");
+      setError("Koneksi bermasalah. Coba lagi.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function removeCategory(id: string) {
-    if (!confirm("Hapus kategori ini?")) return;
-    setError("");
-    try {
-      const res = await fetch("/api/categories", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Gagal hapus kategori");
-        return;
-      }
-      fetchCategories();
-    } catch {
-      setError("Network error");
-    }
+  function removeCategory(c: Category) {
+    ask(
+      `Hapus kategori ${c.name}?`,
+      async () => {
+        try {
+          const res = await fetch("/api/categories", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: c.id }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            setError(data.error || "Gagal hapus kategori");
+            return;
+          }
+          setMessage("Kategori dihapus");
+          await fetchCategories();
+        } catch {
+          setError("Koneksi bermasalah. Coba lagi.");
+        }
+      },
+      { description: "Produk dalam kategori ini tidak akan terhapus.", confirmLabel: "Ya, Hapus" }
+    );
   }
 
   return (
     <div className="container">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>Categories</h1>
-        <Link href="/products" className="btn-secondary" style={{ textDecoration: "none" }}>
-          Back to Products
+      <div className="page-head">
+        <div>
+          <h1>Kategori</h1>
+          <p className="page-sub">Kelompokkan produk agar mudah dicari dan dianalisis</p>
+        </div>
+        <Link href="/products" className="btn-secondary">
+          Ke Produk
         </Link>
       </div>
 
-      {error && <p className="error">{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+      {error && <p className="message error">{error}</p>}
+      {message && <p className="message success">{message}</p>}
 
       <div className="card">
-        <h3>Add Category</h3>
-        <form onSubmit={addCategory} style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <h3>Tambah Kategori</h3>
+        <form onSubmit={addCategory} style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Category name"
-            style={{ flex: 1 }}
+            placeholder="Contoh: Bolt M10"
+            style={{ flex: 1, minWidth: 200 }}
+            required
           />
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? "Saving..." : "Add"}
+            {saving ? "Menyimpan…" : "Tambah"}
           </button>
         </form>
       </div>
 
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>All Categories</h3>
+      <div className="card">
+        <h3>Daftar Kategori ({categories.length})</h3>
         {loading ? (
-          <p>Loading...</p>
+          <p className="muted">Memuat data…</p>
         ) : categories.length === 0 ? (
-          <p>No categories yet.</p>
+          <p className="empty-state">Belum ada kategori. Tambahkan di atas.</p>
         ) : (
-          <table style={{ marginTop: 12 }}>
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    {editingId === c.id ? (
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                      />
-                    ) : (
-                      c.name
-                    )}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    {editingId === c.id ? (
-                      <>
-                        <button onClick={() => updateCategory(c.id)} disabled={saving} style={{ marginRight: 8 }}>
-                          Save
-                        </button>
-                        <button onClick={() => setEditingId(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingId(c.id);
-                            setEditingName(c.name);
-                          }}
-                          style={{ marginRight: 8 }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => removeCategory(c.id)}
-                          style={{ color: "red", background: "none", border: "none", cursor: "pointer" }}
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </td>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nama Kategori</th>
+                  <th className="action-col">Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {categories.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      {editingId === c.id ? (
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          style={{ maxWidth: 280 }}
+                          autoFocus
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 600, color: "var(--ink)" }}>{c.name}</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="row-actions" style={{ justifyContent: "flex-end" }}>
+                        {editingId === c.id ? (
+                          <>
+                            <button onClick={() => updateCategory(c.id)} className="action-link edit" disabled={saving}>
+                              Simpan
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingId(null);
+                                setEditingName("");
+                              }}
+                              className="action-link"
+                            >
+                              Batal
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingId(c.id);
+                                setEditingName(c.name);
+                              }}
+                              className="action-link edit"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => removeCategory(c)}
+                              className="action-link delete"
+                              aria-label={`Hapus ${c.name}`}
+                              title="Hapus"
+                            >
+                              <TrashIcon />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

@@ -8,13 +8,10 @@ const PROTECTED_PATHS = [
   "/purchases",
   "/suppliers",
   "/sales",
-  "/settings",
-  "/ai-agent",
-  "/ocr",
   "/categories",
 ];
 
-const ADMIN_ONLY_PATHS = ["/settings", "/ai-agent"];
+const ADMIN_ONLY_PATHS = ["/inventory", "/categories", "/suppliers"];
 
 export default async function middleware(req: NextRequest) {
   const session = await auth();
