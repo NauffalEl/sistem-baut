@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/config";
+import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PATHS = [
@@ -14,17 +14,20 @@ const PROTECTED_PATHS = [
 const ADMIN_ONLY_PATHS = ["/inventory", "/categories", "/suppliers"];
 
 export default async function middleware(req: NextRequest) {
-  const session = await auth();
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
   const { pathname } = req.nextUrl;
 
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
   const isAdminOnly = ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p));
 
-  if (isProtected && !session) {
+  if (isProtected && !token) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (isAdminOnly && session?.user?.role !== "ADMIN") {
+  if (isAdminOnly && token?.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
