@@ -65,7 +65,7 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
         {/* Brand */}
         <div className="sidebar-brand">
           <div className="brand-mark" aria-hidden="true" style={{ background: "none", boxShadow: "none", width: 32, height: 32 }}>
-            <img src="/brand-logo.svg" alt="Logo" width="32" height="32" style={{ borderRadius: 6 }} />
+            <img src="/boltinventory-icon.svg" alt="Logo" width="32" height="32" style={{ borderRadius: 6 }} />
           </div>
           <div className="brand-text">
             <span className="brand-name">BAUT.ID</span>

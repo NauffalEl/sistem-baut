@@ -1195,10 +1195,20 @@ td .row-actions a:hover {
   gap: 10px;
   margin-bottom: 26px;
 }
-.auth-brand .brand-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.auth-brand .brand-mark,
+[data-theme="dark"] .auth-brand .brand-mark {
+  width: 120px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.auth-brand .brand-mark img {
+  width: 100%;
+  height: auto;
 }
 .auth-brand h1 {
   font-size: 20px;

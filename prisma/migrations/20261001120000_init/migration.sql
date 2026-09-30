@@ -1,3 +1,6 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateTable
 CREATE TABLE "roles" (
     "id" TEXT NOT NULL,
@@ -16,6 +19,7 @@ CREATE TABLE "users" (
     "password" TEXT NOT NULL,
     "roleId" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
+    "lastSeen" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -75,6 +79,32 @@ CREATE TABLE "inventory" (
 );
 
 -- CreateTable
+CREATE TABLE "user_inventory" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_inventory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_inventory_transfers" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "sequenceNumber" INTEGER NOT NULL DEFAULT 1,
+    "note" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_inventory_transfers_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "stock_movements" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
@@ -108,6 +138,7 @@ CREATE TABLE "purchases" (
     "total" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "status" TEXT NOT NULL DEFAULT 'draft',
     "receiptId" TEXT,
+    "note" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -275,6 +306,18 @@ CREATE UNIQUE INDEX "product_aliases_alias_key" ON "product_aliases"("alias");
 CREATE UNIQUE INDEX "inventory_productId_key" ON "inventory"("productId");
 
 -- CreateIndex
+CREATE INDEX "user_inventory_userId_idx" ON "user_inventory"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_inventory_userId_productId_key" ON "user_inventory"("userId", "productId");
+
+-- CreateIndex
+CREATE INDEX "user_inventory_transfers_userId_idx" ON "user_inventory_transfers"("userId");
+
+-- CreateIndex
+CREATE INDEX "user_inventory_transfers_productId_idx" ON "user_inventory_transfers"("productId");
+
+-- CreateIndex
 CREATE INDEX "stock_movements_productId_idx" ON "stock_movements"("productId");
 
 -- CreateIndex
@@ -335,6 +378,18 @@ ALTER TABLE "product_aliases" ADD CONSTRAINT "product_aliases_productId_fkey" FO
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "user_inventory" ADD CONSTRAINT "user_inventory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_inventory" ADD CONSTRAINT "user_inventory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_inventory_transfers" ADD CONSTRAINT "user_inventory_transfers_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_inventory_transfers" ADD CONSTRAINT "user_inventory_transfers_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_productId_fkey" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -372,3 +427,4 @@ ALTER TABLE "ai_reports" ADD CONSTRAINT "ai_reports_executionId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

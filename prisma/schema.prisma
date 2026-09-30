@@ -4,6 +4,9 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Koneksi langsung (tanpa pooler) — wajib untuk `prisma migrate deploy`.
+  // Di Supabase, arahkan ke Session Pooler / Direct Connection (port 5432).
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {

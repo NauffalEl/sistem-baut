@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistem Inventory Baut",
   description: "Sistem Inventory Baut",
+  icons: {
+    icon: "/boltinventory-icon.svg",
+    shortcut: "/boltinventory-icon.svg",
+    apple: "/boltinventory-icon.svg",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
