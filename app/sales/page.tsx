@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { useConfirmDialog } from "@/app/components/useConfirmDialog";
 import { ConfirmDialog } from "@/app/components/ConfirmDialog";
 import { TrashIcon } from "@/components/icons/TrashIcon";
+import { InventoryQuickPanel } from "@/components/inventory/InventoryQuickPanel";
 import { writeScanDraft } from "@/lib/sales/scan-draft";
 
 type SaleItem = {
@@ -43,7 +44,7 @@ export default function SalesPage() {
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [scanInfo, setScanInfo] = useState("");
+  const [showInventory, setShowInventory] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { dialogProps, ask } = useConfirmDialog();
 
@@ -57,9 +58,9 @@ export default function SalesPage() {
       const res = await fetch(`/api/sales?${params}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Gagal load penjualan");
       const data = await res.json();
-      setSales(data.items);
-    } catch (e: any) {
-      setError(e.message || "Terjadi kesalahan");
+      setSales(data.items || []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -77,7 +78,6 @@ export default function SalesPage() {
   async function handleScan(file: File) {
     setScanning(true);
     setError("");
-    setScanInfo("");
     try {
       const form = new FormData();
       form.append("file", file);
@@ -97,12 +97,14 @@ export default function SalesPage() {
 
       writeScanDraft({
         receiptId,
-        lines: lines.map((l: any) => ({
-          productId: l.matchedProductId ?? null,
-          name: l.rawName,
-          quantity: Number(l.quantity) || 1,
-          price: Number(l.price) || 0,
-        })),
+        lines: (Array.isArray(lines) ? lines : []).map(
+          (l: { matchedProductId?: string | null; rawName?: string; quantity?: number; price?: number }) => ({
+            productId: l.matchedProductId ?? null,
+            name: l.rawName ?? "",
+            quantity: Number(l.quantity) || 1,
+            price: Number(l.price) || 0,
+          })
+        ),
       });
       router.push("/sales/new");
 
@@ -169,7 +171,14 @@ export default function SalesPage() {
           <h1>Penjualan</h1>
           <p className="page-sub">Kelola struk dan transaksi keluar</p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="page-head-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setShowInventory(true)}
+          >
+            Inventori
+          </button>
           {isAdmin && (
             <>
               <input
@@ -199,11 +208,17 @@ export default function SalesPage() {
       </div>
 
       {error && <p className="message error">{error}</p>}
-      {scanInfo && <p className="message success">{scanInfo}</p>}
 
       <div className="filters">
-        <input className="grow" type="text" placeholder="Cari nomor SO…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <input 
+          className="grow" 
+          type="text" 
+          placeholder="Cari nomor SO…" 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+          aria-label="Cari penjualan"
+        />
+        <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter status">
           <option value="">Semua Status</option>
           <option value="draft">Draft</option>
           <option value="confirmed">Dikonfirmasi</option>
@@ -214,51 +229,62 @@ export default function SalesPage() {
       {loading ? (
         <p className="muted">Memuat data…</p>
       ) : sales.length === 0 ? (
-        <div className="card empty-state">Belum ada penjualan. {isAdmin && "Mulai dengan membuat struk baru."}</div>
-      ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>No. SO</th>
-                <th className="num-col">Item</th>
-                <th className="num-col">Total</th>
-                <th>Status</th>
-                <th>Tanggal</th>
-                <th className="action-col">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((s) => (
-                <tr key={s.id}>
-                  <td className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{s.saleNo}</td>
-                  <td className="num">{s.items.length}</td>
-                  <td className="num">{rupiah(s.total)}</td>
-                  <td>
-                    <span className={`badge ${STATUS_BADGE[s.status] ?? "badge-muted"}`}>
-                      {STATUS_LABEL[s.status] ?? s.status}
-                    </span>
-                  </td>
-                  <td className="muted">{new Date(s.createdAt).toLocaleDateString("id-ID")}</td>
-                  <td>
-                    <div className="row-actions">
-                      <Link href={`/sales/${s.id}`} className="action-link">Lihat</Link>
-                      {isAdmin && s.status === "draft" && (
-                        <>
-                          <button onClick={() => handleConfirm(s.id)} className="table-action">Konfirmasi</button>
-                          <button onClick={() => handleCancel(s.id, s.saleNo)} className="action-link delete" aria-label={`Batalkan ${s.saleNo}`} title="Batalkan">
-                            <TrashIcon />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="card empty-state">
+          {search || filter 
+            ? "Tidak ada penjualan yang cocok dengan filter." 
+            : isAdmin
+              ? "Belum ada penjualan. Mulai dengan membuat struk baru."
+              : "Belum ada penjualan."}
         </div>
+      ) : (
+        <>
+          <p className="table-meta">Menampilkan {sales.length} transaksi</p>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>No. SO</th>
+                  <th className="num-col">Item</th>
+                  <th className="num-col">Total</th>
+                  <th>Status</th>
+                  <th>Tanggal</th>
+                  <th className="action-col">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sales.map((s) => (
+                  <tr key={s.id}>
+                    <td className="num cell-strong">{s.saleNo}</td>
+                    <td className="num num-col">{s.items.length}</td>
+                    <td className="num num-col cell-strong">{rupiah(s.total)}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGE[s.status] ?? "badge-muted"}`}>
+                        {STATUS_LABEL[s.status] ?? s.status}
+                      </span>
+                    </td>
+                    <td className="muted">{new Date(s.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</td>
+                    <td className="action-col">
+                      <div className="row-actions">
+                        <Link href={`/sales/${s.id}`} className="action-link">Lihat</Link>
+                        {isAdmin && s.status === "draft" && (
+                          <>
+                            <button onClick={() => handleConfirm(s.id)} className="table-action">Konfirmasi</button>
+                            <button onClick={() => handleCancel(s.id, s.saleNo)} className="action-link delete" aria-label={`Batalkan ${s.saleNo}`} title="Batalkan">
+                              <TrashIcon />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
+
+      {showInventory && <InventoryQuickPanel onClose={() => setShowInventory(false)} />}
 
       <ConfirmDialog {...dialogProps} />
     </div>

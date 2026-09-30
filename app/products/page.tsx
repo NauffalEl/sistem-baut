@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { writeProductScanDraft } from "@/lib/products/scan-draft";
 
 type Product = {
   id: string;
@@ -24,9 +25,53 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterActive, setFilterActive] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const isAdmin = sessionStatus !== "loading" && session?.user?.role === "ADMIN";
+
+  async function handleScan(file: File) {
+    setScanning(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/ocr", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Gagal memproses gambar");
+        return;
+      }
+      
+      const receiptId = data.receipt?.id ?? "";
+      if (!receiptId) {
+        setError("Pindai selesai tapi tidak menghasilkan ID nota.");
+        return;
+      }
+
+      const lines = (data.ocrResult?.items ?? []).map(
+        (item: { rawName: string; quantity: number; price: number }) => ({
+          productId: null,
+          name: item.rawName,
+          quantity: Number(item.quantity) || 1,
+          price: Number(item.price) || 0,
+        })
+      );
+      if (lines.length === 0) {
+        setError("Tidak ada item barang yang terdeteksi pada struk.");
+        return;
+      }
+
+      writeProductScanDraft({ receiptId, lines });
+      router.push("/products/new");
+    } catch {
+      setError("Koneksi bermasalah saat memproses gambar");
+    } finally {
+      setScanning(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   useEffect(() => {
     fetchCategories();
@@ -58,8 +103,8 @@ export default function ProductsPage() {
       if (!res.ok) throw new Error("Gagal load produk");
       const data = await res.json();
       setProducts(data.items);
-    } catch (e: any) {
-      setError(e.message || "Error");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
     } finally {
       setLoading(false);
     }
@@ -91,7 +136,29 @@ export default function ProductsPage() {
           <h1>Produk</h1>
           <p className="page-sub">Kelola daftar produk, SKU, dan harga jual</p>
         </div>
-        <Link href="/products/new" className="btn-primary">+ Produk Baru</Link>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleScan(file);
+            }}
+          />
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={scanning}
+              onClick={() => fileRef.current?.click()}
+            >
+              {scanning ? "Memindai Struk..." : "Scan Struk"}
+            </button>
+          )}
+          <Link href="/products/new" className="btn-primary">+ Produk Baru</Link>
+        </div>
       </div>
 
       {error && <p className="message error">{error}</p>}

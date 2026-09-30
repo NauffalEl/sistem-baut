@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { PresenceRail } from "@/components/presence/PresenceRail";
 
 type StockItem = {
   id: string;
@@ -77,8 +78,8 @@ export default function InventoryPage() {
         const outData = await outRes.json();
         setOutOfStock(outData.products || []);
       }
-    } catch (e: any) {
-      setError(e.message || "Terjadi kesalahan");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Terjadi kesalahan");
     } finally {
       setLoading(false);
     }
@@ -153,7 +154,14 @@ export default function InventoryPage() {
           <h1>Inventori</h1>
           <p className="page-sub">Pantau stok dan sesuaikan jumlah barang</p>
         </div>
+        <div className="page-head-actions">
+          <button type="button" className="btn-secondary" onClick={fetchAll} disabled={loading}>
+            {loading ? "Memuat…" : "Refresh"}
+          </button>
+        </div>
       </div>
+
+      <PresenceRail />
 
       {error && <p className="message error">{error}</p>}
       {message && <p className="message success">{message}</p>}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { TrashIcon } from "@/components/icons/TrashIcon";
 import { readScanDraft } from "@/lib/sales/scan-draft";
+import { ProductPicker } from "./ProductPicker";
 
 type Product = {
   id: string;
@@ -12,6 +13,7 @@ type Product = {
   sku: string;
   sellingPrice: number;
   inventory: { quantity: number } | null;
+  aliases?: { alias: string }[];
 };
 
 type LineItem = { productId: string; quantity: number; price: number };
@@ -134,23 +136,16 @@ export default function NewSalePage() {
           <h3>Item Penjualan</h3>
           {items.map((item, idx) => (
             <div key={idx} className="line-item">
-              <select
+              <ProductPicker
+                products={products}
                 value={item.productId}
-                onChange={(e) => {
-                  const prod = products.find((p) => p.id === e.target.value);
-                  updateItem(idx, "productId", e.target.value);
-                  if (prod) updateItem(idx, "price", prod.sellingPrice);
+                onSelect={(p) => {
+                  const keepPrice = item.price > 0 && item.productId !== "";
+                  updateItem(idx, "productId", p.id);
+                  if (!keepPrice) updateItem(idx, "price", p.sellingPrice);
                 }}
-                className="line-item-product"
-                required
-              >
-                <option value="">Pilih produk…</option>
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.sku}) — stok {p.inventory?.quantity ?? 0}
-                  </option>
-                ))}
-              </select>
+                label={`Produk baris ${idx + 1}`}
+              />
               <input
                 type="number"
                 min="1"

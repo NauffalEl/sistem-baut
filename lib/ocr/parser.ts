@@ -50,6 +50,8 @@ export class ReceiptParser implements OCRParser {
       /^\d+\.\s+(.+?)\s+(\d+)\s*x\s*(\d+)\s+(\d+)$/,
       // Simple: "Name  qty  price  total"
       /^(.+?)\s+(\d+)\s+(\d+)\s+(\d+)$/,
+      // Qty first: "qty Name price" (User's example: 500 Baut 6x30 700)
+      /^(\d+)\s+(.+?)\s+(\d+)$/,
       // With spaces: "Name  qty x price"
       /^(.+?)\s+(\d+)\s*x\s*(\d+)$/,
     ];
@@ -57,7 +59,24 @@ export class ReceiptParser implements OCRParser {
     for (const pattern of patterns) {
       const match = line.match(pattern);
       if (match) {
-        const [, rawName, qty, price, total] = match;
+        let rawName, qty, price, total;
+
+        if (pattern.source.startsWith("^(\\d+)")) {
+          // Qty first pattern: [qty, name, price]
+          [, qty, rawName, price] = match;
+          total = undefined;
+        } else if (pattern.source.includes("x") && match.length === 5) {
+           // Numbered pattern: [full, name, qty, price, total]
+           [, rawName, qty, price, total] = match;
+        } else if (match.length === 5) {
+           // Simple 4-col: [full, name, qty, price, total]
+           [, rawName, qty, price, total] = match;
+        } else {
+           // Simple 3-col: [full, name, qty, price]
+           [, rawName, qty, price] = match;
+           total = undefined;
+        }
+
         const quantity = parseInt(qty, 10);
         const unitPrice = parseInt(price, 10);
         const lineTotal = total ? parseInt(total, 10) : quantity * unitPrice;

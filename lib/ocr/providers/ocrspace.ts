@@ -25,7 +25,6 @@ export class OCRSpaceProvider implements OCRProvider {
 
     const formData = new FormData();
     formData.append("apikey", apiKey);
-    formData.append("language", "ind");
     formData.append("isTable", "true");
     formData.append("scale", "true");
 
