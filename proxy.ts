@@ -13,7 +13,7 @@ const PROTECTED_PATHS = [
 
 const ADMIN_ONLY_PATHS = ["/inventory", "/categories", "/suppliers"];
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET,
