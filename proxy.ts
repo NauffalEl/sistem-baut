@@ -1,4 +1,4 @@
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth/config";
 import { NextRequest, NextResponse } from "next/server";
 
 const PROTECTED_PATHS = [
@@ -14,16 +14,12 @@ const PROTECTED_PATHS = [
 const ADMIN_ONLY_PATHS = ["/inventory", "/categories", "/suppliers"];
 
 export default async function proxy(req: NextRequest) {
-  let token = null;
+  let session = null;
   try {
-    token = await getToken({
-      req,
-      secret: process.env.AUTH_SECRET,
-    });
+    session = await auth();
   } catch (e) {
-    // getToken may fail if AUTH_SECRET is missing, malformed, or cookie is corrupted.
-    console.error("[proxy] getToken failed:", e);
-    // Don't redirect here; let the route handle it.
+    // auth() may fail if AUTH_SECRET is missing, malformed, or cookie is corrupted.
+    console.error("[proxy] auth() failed:", e);
   }
 
   const { pathname } = req.nextUrl;
@@ -31,11 +27,11 @@ export default async function proxy(req: NextRequest) {
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
   const isAdminOnly = ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p));
 
-  if (isProtected && !token) {
+  if (isProtected && !session) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (isAdminOnly && token?.role !== "ADMIN") {
+  if (isAdminOnly && session?.user?.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
