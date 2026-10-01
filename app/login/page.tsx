@@ -30,7 +30,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      // Force a full page reload so the server can set cookies before middleware runs.
+      // Client-side router.push() may race with cookie propagation on Vercel.
+      window.location.href = "/dashboard";
     } catch (err: any) {
       setError(err.message || "Terjadi kesalahan");
       setLoading(false);

@@ -14,10 +14,18 @@ const PROTECTED_PATHS = [
 const ADMIN_ONLY_PATHS = ["/inventory", "/categories", "/suppliers"];
 
 export default async function proxy(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-  });
+  let token = null;
+  try {
+    token = await getToken({
+      req,
+      secret: process.env.AUTH_SECRET,
+    });
+  } catch (e) {
+    // getToken may fail if AUTH_SECRET is missing, malformed, or cookie is corrupted.
+    console.error("[proxy] getToken failed:", e);
+    // Don't redirect here; let the route handle it.
+  }
+
   const { pathname } = req.nextUrl;
 
   const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));

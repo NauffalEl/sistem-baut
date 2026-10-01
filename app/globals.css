@@ -25,7 +25,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg);
   color: var(--ink);
-  overflow-x: hidden;
 }
 a {
   color: inherit;
@@ -514,6 +513,12 @@ button {
   flex-wrap: wrap;
   margin-bottom: 22px;
 }
+.page-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .page-head h1 {
   font-size: 24px;
   font-weight: 700;
@@ -825,7 +830,7 @@ button {
 /* Chart grid — 2 columns per row on larger screens */
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
@@ -867,6 +872,18 @@ button {
   letter-spacing: -0.01em;
   color: var(--ink);
   margin-bottom: 14px;
+}
+
+/* Total row under detail tables */
+.row-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 14px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
 }
 
 /* Stat grid */
@@ -1507,6 +1524,59 @@ td .row-actions a:hover {
   }
   .page-head h1 {
     font-size: 21px;
+  }
+  .filters {
+    flex-direction: column;
+  }
+  .filters input,
+  .filters select,
+  .filters .grow {
+    width: 100%;
+    min-width: 0;
+  }
+  .page-head {
+    align-items: flex-start;
+  }
+  .page-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .line-item-product,
+  .line-item-qty,
+  .line-item-price,
+  .line-item-subtotal {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .line-item-subtotal {
+    text-align: left;
+  }
+  .modal-card {
+    padding: 18px;
+  }
+  .modal-actions .btn-primary,
+  .modal-actions .btn-secondary,
+  .modal-actions .action-link {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .auth-card {
+    padding: 24px 20px;
+  }
+  .total-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Very small phones — keep 2 columns for compact data density */
+@media (max-width: 400px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

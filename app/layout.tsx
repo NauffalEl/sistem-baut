@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -24,6 +24,13 @@ export const metadata: Metadata = {
     shortcut: "/boltinventory-icon.svg",
     apple: "/boltinventory-icon.svg",
   },
+};
+
+// Next.js 15+ requires a separate `viewport` export; `metadata.viewport` is ignored.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
